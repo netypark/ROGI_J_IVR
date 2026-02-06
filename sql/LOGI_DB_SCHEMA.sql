@@ -1,5 +1,5 @@
--- LOGI Database Schema
--- Generated: 2026-02-06 01:51:37
+﻿-- LOGI Database Schema
+-- Generated: 2026-02-06 01:55:40
 -- Encoding: UTF-8
 
 -- ========================================
