@@ -42,6 +42,7 @@
 
 include 'plog.php';
 include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
+include_once 'crosscall_link.php';  // 2026-02-02: CrossCall Original Linkedid 연결
 
 	// 2026-01-29: Helper function to get pbx_id for a given Q number
 	function get_pbx_id_for_q_step2($conn, $q_num) {
@@ -61,8 +62,8 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 	}
 
 	// v1.2.0: Added optional parameters for crosscall incoming scenario
-	function get_q_step2( 	$COMPANY_ID, $DID, $CID, $TYPE, $OPTION, $MYQ, $QLIST, $TRCOUNT, $TRORDER, $DIDLIST,
-				$CC_ORIGIN_Q = '', $CC_ORIGINAL_DID = '', $IS_CROSSCALL_INCOMING = 'N' )
+	function get_q_step2( 	$COMPANY_ID, $DID, $CID, $TYPE, $OPTION, $MYQ, $QLIST, $TRCOUNT, $TRORDER, $DIDLIST, $PBXIDLIST,
+				$CC_ORIGIN_Q = '', $CC_ORIGINAL_DID = '', $IS_CROSSCALL_INCOMING = 'N', $LINKEDID = '', $CALL_ID = '' )
 	{
 		SLOG( sprintf( '[GET_QE_CC_D %s:%s] START =======================================================================================================', $DID, $CID ) );
 		SLOG( sprintf( '[GET_Q_STEP2 %s:%s] IS_CROSSCALL_INCOMING=%s, CC_ORIGIN_Q=%s, CC_ORIGINAL_DID=%s',
@@ -166,11 +167,25 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$count= ($res !== false) ? mysqli_num_rows($res) : 0; // PHP 8.2 Fix: Check result before mysqli_num_rows
 					if( $RESULT->my_q_find == 'N' )
 					{
-						for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+						// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+						$effective_trorder = $TRORDER;
+						if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+							for ($k = 0; $k < $TRCOUNT; $k++) {
+								if ($QLIST[$k] == $CC_ORIGIN_Q) {
+									$effective_trorder = $k + 2;
+									if ($effective_trorder > $TRCOUNT) $effective_trorder = 1;
+									SLOG( sprintf( '[GET_CC_SMYT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+										$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+									break;
+								}
+							}
+						}
+
+						for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 						}
-						for( $j=0; $j<$TRORDER-1; $j++ )
+						for( $j=0; $j<$effective_trorder-1; $j++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 						}
@@ -213,31 +228,34 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 						error_log($sql);
 						SLOG( sprintf( '[GET_CC_SMYT %s:%s] %s', $DID, $CID, $sql ) );
 						$res = mysqli_query($conn, $sql);
-      // PHP 8.2 Fix: Added error handling for mysqli_query
-      if ($res === false) {
-      	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-      }
 
+                        // PHP 8.2 Fix: Added error handling for mysqli_query
+                        if ($res === false) {
+                            SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                        }
 
-      // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                        // PHP 8.2 Fix: Check result before mysqli_fetch_array
 						if( $res && ($row = mysqli_fetch_array($res)) )
 						{
 							//error_log($row[0]);
 
-							$RESULT->tr_next_q    = $row[0];
-							$RESULT->tr_order_id  = $row[1];
-							$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
+							$RESULT->tr_next_q      = $row[0];
+							$RESULT->tr_order_id    = $row[1];
+							$RESULT->tr_next_did    = $DIDLIST[$RESULT->tr_order_id-1];
 							$RESULT->tr_order_id++;
 
-							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
+							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NEXTTORDER:%s', 
+                                            $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 						}
 						else
 						{
-							$RESULT->tr_next_q     = $MYQ;
-							$RESULT->tr_next_did 	= $DID;
-							$RESULT->tr_order_id 	= 1;
-							$RESULT->my_q_find	='Y';
-							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ(MYQ):%s NEXTDID:%s TRORDER:%s', $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
+							$RESULT->tr_next_q      = $MYQ;
+							$RESULT->tr_next_did    = $DID;
+							$RESULT->tr_order_id    = 1;
+							$RESULT->my_q_find      ='Y';
+
+							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ(MYQ):%s NEXTDID:%s TRORDER:%s', 
+                                            $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
 
 							/**
 							$sql = "select q.q_num from T_Q_EXTENSION AS q INNER JOIN T_EXTENSION AS e on q.ext_number = e.ext_number where q.q_num='$MYQ' and e.call_status=0 and e.is_status=1 group by q_num limit 1;";
@@ -260,31 +278,48 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					}
 					else
 					{
-						for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+						// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+						$effective_trorder = $TRORDER;
+						if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+							for ($k = 0; $k < $TRCOUNT; $k++) {
+								if ($QLIST[$k] == $CC_ORIGIN_Q) {
+									$effective_trorder = $k + 2;
+									if ($effective_trorder > $TRCOUNT) $effective_trorder = 1;
+									SLOG( sprintf( '[GET_CC_SMYT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+										$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+									break;
+								}
+							}
+						}
+
+						for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 						}
-						for( $j=0; $j<$TRORDER-1; $j++ )
+						for( $j=0; $j<$effective_trorder-1; $j++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 						}
 						$NEWLIST = rtrim($TRQLIST, ", ");
 						SLOG( sprintf( '[GET_CC_SMYT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-						$sql = "select m.transfer_q_number, m.transfer_order_num from T_MY_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+						// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+						$sql = "select m.transfer_q_number, m.transfer_order_num from T_MY_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 						error_log($sql);
 						SLOG( sprintf( '[GET_CC_SMYT %s:%s] %s', $DID, $CID, $sql ) );
-						SLOG( sprintf( '[GET_CC_SMYT %s:%s] %s', $DID, $CID, '@@@@@@@@@@@@@@@@@@@@@@@@@@' ) );
+						SLOG( sprintf( '[GET_CC_SMYT %s:%s] QList filter applied', $DID, $CID ) );
 
 						$res = mysqli_query($conn, $sql);
-      // PHP 8.2 Fix: Added error handling for mysqli_query
-      if ($res === false) {
-      	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-      }
+
+                        // PHP 8.2 Fix: Added error handling for mysqli_query
+                        if ($res === false) 
+                        {
+                            SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                        }
 
 
-      // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                        // PHP 8.2 Fix: Check result before mysqli_fetch_array
 						if( $res && ($row = mysqli_fetch_array($res)) )
 						{
 							//error_log($row[0]);
@@ -294,7 +329,8 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 							$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 							$RESULT->tr_order_id++;
 
-							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1] ) );
+							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NEXTTRORDER:%s', 
+                                            $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 						}
 						else
 					{
@@ -302,7 +338,8 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 							$RESULT->tr_next_did 	= $DID;
 							$RESULT->tr_order_id 	= 1;
 							$RESULT->my_q_find	='Y';
-							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ(MYQ):%s NEXTDID:%s TRORDER:%s', $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
+							SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ(MYQ):%s NEXTDID:%s TRORDER:%s', 
+                                            $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
 						}
 						$count= ($res !== false) ? mysqli_num_rows($res) : 0; // PHP 8.2 Fix: Check result before mysqli_num_rows
 					}
@@ -315,11 +352,25 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$TRORDER = 1;
 				}
 
-				for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+				// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+				$effective_trorder = $TRORDER;
+				if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+					for ($k = 0; $k < $TRCOUNT; $k++) {
+						if ($QLIST[$k] == $CC_ORIGIN_Q) {
+							$effective_trorder = $k + 2;
+							if ($effective_trorder > $TRCOUNT) $effective_trorder = 1;
+							SLOG( sprintf( '[GET_CC_SMYT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+								$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+							break;
+						}
+					}
+				}
+
+				for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 				{
 					$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 				}
-				for( $j=0; $j<$TRORDER-1; $j++ )
+				for( $j=0; $j<$effective_trorder-1; $j++ )
 				{
 					$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 				}
@@ -327,18 +378,21 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 				$NEWLIST = rtrim($TRQLIST, ", ");
 				SLOG( sprintf( '[GET_CC_SMYT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-				$sql = "select m.transfer_q_number, m.transfer_order_num from T_MY_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+				// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+				$sql = "select m.transfer_q_number, m.transfer_order_num from T_MY_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 				error_log($sql);
-				SLOG( sprintf( '[GET_CC_SMYT %s:%s] %s', $DID, $CID, $sql ) );
+				SLOG( sprintf( '[GET_CC_SMYT %s:%s] %s (QList filter applied)', $DID, $CID, $sql ) );
 				$res = mysqli_query($conn, $sql);
-    // PHP 8.2 Fix: Added error handling for mysqli_query
-    if ($res === false) {
-    	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-    }
+
+                // PHP 8.2 Fix: Added error handling for mysqli_query
+                if ($res === false) 
+                {
+                    SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                }
 
 
-    // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                // PHP 8.2 Fix: Check result before mysqli_fetch_array
 				if( $res && ($row = mysqli_fetch_array($res)) )
 				{
 					//error_log($row[0]);
@@ -348,7 +402,8 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 					$RESULT->tr_order_id++;
 
-					SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1] ) );
+					SLOG( sprintf( '[GET_CC_SMYT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NEXTTRODER:%s', 
+                                    $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 				}
 				else
 				{
@@ -359,7 +414,8 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 					$RESULT->tr_order_id++;
                                 
-					SLOG( sprintf( '[GET_CC_SMYT %s:%s] SMY CAHNNEL BUSY NEXTQ:%s NEXTDID:%s TRORDER:%s', $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
+					SLOG( sprintf( '[GET_CC_SMYT %s:%s] SMY CAHNNEL BUSY NEXTQ:%s NEXTDID:%s TRORDER:%s NEXTTRODER:%s', 
+                                    $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $TRORDER, $RESULT->tr_order_id ) );
 				}
 				$count= ($res !== false) ? mysqli_num_rows($res) : 0; // PHP 8.2 Fix: Check result before mysqli_num_rows
 			}
@@ -409,11 +465,25 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$count= mysqli_num_rows($res);
 					if( $RESULT->my_q_find == 'N' )
 					{
-						for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+						// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+						$effective_trorder = $TRORDER;
+						if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+							for ($k = 0; $k < $TRCOUNT; $k++) {
+								if ($QLIST[$k] == $CC_ORIGIN_Q) {
+									$effective_trorder = $k + 2;
+									if ($effective_trorder > $TRCOUNT) $effective_trorder = 1;
+									SLOG( sprintf( '[GET_CC_DIRT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+										$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+									break;
+								}
+							}
+						}
+
+						for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 						}
-						for( $j=0; $j<$TRORDER-1; $j++ )
+						for( $j=0; $j<$effective_trorder-1; $j++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 						}
@@ -456,13 +526,14 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 						error_log($sql);
 						SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s', $DID, $CID, $sql ) );
 						$res = mysqli_query($conn, $sql);
-      // PHP 8.2 Fix: Added error handling for mysqli_query
-      if ($res === false) {
-      	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-      }
+                       
+                        // PHP 8.2 Fix: Added error handling for mysqli_query
+                        if ($res === false) 
+                        {
+                            SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                        }
 
-
-      // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                        // PHP 8.2 Fix: Check result before mysqli_fetch_array
 						if( $res && ($row = mysqli_fetch_array($res)) )
 						{
 							//error_log($row[0]);
@@ -472,7 +543,7 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 							$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 							$RESULT->tr_order_id++;
 
-							SLOG( sprintf( '[GET_CC_DIRT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
+							SLOG( sprintf( '[GET_CC_DIRT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s TORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 						}
 						else
 						{
@@ -484,13 +555,15 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 							error_log($sql);
 							SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s', $DID, $CID, $sql ) );
 							$res = mysqli_query($conn, $sql);
-       // PHP 8.2 Fix: Added error handling for mysqli_query
-       if ($res === false) {
-       	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-       }
+
+                            // PHP 8.2 Fix: Added error handling for mysqli_query
+                            if ($res === false) 
+                            {
+                                SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                            }
 
 
-       // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                            // PHP 8.2 Fix: Check result before mysqli_fetch_array
 							if( $res && ($row = mysqli_fetch_array($res)) )
 							{
 								//error_log($row[0]);
@@ -505,22 +578,39 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					}
 					else
 					{
-						for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+						// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+						$effective_trorder = $TRORDER;
+						if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+							for ($k = 0; $k < $TRCOUNT; $k++) {
+								if ($QLIST[$k] == $CC_ORIGIN_Q) {
+									$effective_trorder = $k + 2;
+									if ($effective_trorder > $TRCOUNT) {
+										$effective_trorder = 1;
+									}
+									SLOG( sprintf( '[GET_CC_DIRT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+										$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+									break;
+								}
+							}
+						}
+
+						for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 						}
-						for( $j=0; $j<$TRORDER-1; $j++ )
+						for( $j=0; $j<$effective_trorder-1; $j++ )
 						{
 							$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 						}
 						$NEWLIST = rtrim($TRQLIST, ", ");
 						SLOG( sprintf( '[GET_CC_DIRT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-						$sql = "select m.transfer_q_number, m.transfer_order_num from T_DIRECT_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+						// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+						$sql = "select m.transfer_q_number, m.transfer_order_num from T_DIRECT_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 						error_log($sql);
 						SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s', $DID, $CID, $sql ) );
-						SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s', $DID, $CID, '@@@@@@@@@@@@@@@@@@@@@@@@@@' ) );
+						SLOG( sprintf( '[GET_CC_DIRT %s:%s] QList filter applied', $DID, $CID ) );
 
 						$res = mysqli_query($conn, $sql);
       // PHP 8.2 Fix: Added error handling for mysqli_query
@@ -552,11 +642,30 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					$TRORDER = 1;
 				}
 
-				for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+				// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+				// IS_CROSSCALL_INCOMING=Y인 경우, CC_ORIGIN_Q 이후의 Q부터 시작
+				$effective_trorder = $TRORDER;
+				if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+					// CC_ORIGIN_Q의 위치를 찾아서 그 다음부터 시작
+					for ($k = 0; $k < $TRCOUNT; $k++) {
+						if ($QLIST[$k] == $CC_ORIGIN_Q) {
+							// CC_ORIGIN_Q 다음 Q부터 시작 (k+2는 1-based index)
+							$effective_trorder = $k + 2;
+							if ($effective_trorder > $TRCOUNT) {
+								$effective_trorder = 1;  // 순환
+							}
+							SLOG( sprintf( '[GET_CC_DIRT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+								$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+							break;
+						}
+					}
+				}
+
+				for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 				{
 					$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 				}
-				for( $j=0; $j<$TRORDER-1; $j++ )
+				for( $j=0; $j<$effective_trorder-1; $j++ )
 				{
 					$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 				}
@@ -564,10 +673,11 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 				$NEWLIST = rtrim($TRQLIST, ", ");
 				SLOG( sprintf( '[GET_CC_DIRT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-				$sql = "select m.transfer_q_number, m.transfer_order_num from T_DIRECT_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+				// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+				$sql = "select m.transfer_q_number, m.transfer_order_num from T_DIRECT_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 				error_log($sql);
-				SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s', $DID, $CID, $sql ) );
+				SLOG( sprintf( '[GET_CC_DIRT %s:%s] %s (QList filter applied)', $DID, $CID, $sql ) );
 				$res = mysqli_query($conn, $sql);
     // PHP 8.2 Fix: Added error handling for mysqli_query
     if ($res === false) {
@@ -608,18 +718,19 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 				$TRORDER = 1;
 				SLOG( sprintf( '[GET_CC_SEQT %s:%s] TRQLIST:%s', $DID, $CID, $MYQ ) );
 
-                                        $sql = "select q.q_num from T_Q_EXTENSION AS q INNER JOIN T_EXTENSION AS e on q.ext_number = e.ext_number where q.q_num='$MYQ' and e.call_status=0 and e.is_status=1 group by q_num limit 1;";
+                $sql = "select q.q_num from T_Q_EXTENSION AS q INNER JOIN T_EXTENSION AS e on q.ext_number = e.ext_number where q.q_num='$MYQ' and e.call_status=0 and e.is_status=1 group by q_num limit 1;";
 
 				error_log($sql);
 				SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 				$res = mysqli_query($conn, $sql);
-    // PHP 8.2 Fix: Added error handling for mysqli_query
-    if ($res === false) {
-    	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-    }
 
+                // PHP 8.2 Fix: Added error handling for mysqli_query
+                if ($res === false) 
+                {
+                    SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                }
 
-    // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                // PHP 8.2 Fix: Check result before mysqli_fetch_array
 				if( $res && ($row = mysqli_fetch_array($res)) )
 				{
 					//error_log($row[0]);
@@ -636,29 +747,51 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 				if( $RESULT->my_q_find == 'N' )
 				{
 					//SLOG( sprintf( '[GET_CC_SEQT %s:%s] %ss', $DID, $CID, '################################' ) );
-					for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+
+					// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+					// IS_CROSSCALL_INCOMING=Y인 경우, CC_ORIGIN_Q 이후의 Q부터 시작
+					$effective_trorder = $TRORDER;
+					if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+						// CC_ORIGIN_Q의 위치를 찾아서 그 다음부터 시작
+						for ($k = 0; $k < $TRCOUNT; $k++) {
+							if ($QLIST[$k] == $CC_ORIGIN_Q) {
+								// CC_ORIGIN_Q 다음 Q부터 시작 (k+2는 1-based index)
+								$effective_trorder = $k + 2;
+								if ($effective_trorder > $TRCOUNT) {
+									$effective_trorder = 1;  // 순환
+								}
+								SLOG( sprintf( '[GET_CC_SEQT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+									$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+								break;
+							}
+						}
+					}
+
+					for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 					{
 						$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 					}
-					for( $j=0; $j<$TRORDER-1; $j++ )
+					for( $j=0; $j<$effective_trorder-1; $j++ )
 					{
 						$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 					}
 					$NEWLIST = rtrim($TRQLIST, ", ");
 					SLOG( sprintf( '[GET_CC_SEQT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-					$sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+					// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+					$sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 					error_log($sql);
 					SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 					$res = mysqli_query($conn, $sql);
-     // PHP 8.2 Fix: Added error handling for mysqli_query
-     if ($res === false) {
-     	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-     }
+                    
+                    // PHP 8.2 Fix: Added error handling for mysqli_query
+                    if ($res === false) 
+                    {
+                        SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                    }
 
-
-     // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                    // PHP 8.2 Fix: Check result before mysqli_fetch_array
 					if( $res && ($row = mysqli_fetch_array($res)) )
 					{
 						//error_log($row[0]);
@@ -691,13 +824,14 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 					error_log($sql);
 					SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 					$res = mysqli_query($conn, $sql);
-     // PHP 8.2 Fix: Added error handling for mysqli_query
-     if ($res === false) {
-     	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-     }
+                   
+                     // PHP 8.2 Fix: Added error handling for mysqli_query
+                    if ($res === false) 
+                    {
+                        SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                    }
 
-
-     // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                    // PHP 8.2 Fix: Check result before mysqli_fetch_array
 					if( $res && ($row = mysqli_fetch_array($res)) )
 					{
 						//error_log($row[0]);
@@ -707,7 +841,7 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 						$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 						$RESULT->tr_order_id++;
 
-						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
+						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s TORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 					}
 					else
 					{
@@ -721,13 +855,14 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 						error_log($sql);
 						SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 						$res = mysqli_query($conn, $sql);
-      // PHP 8.2 Fix: Added error handling for mysqli_query
-      if ($res === false) {
-      	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-      }
 
+                        // PHP 8.2 Fix: Added error handling for mysqli_query
+                        if ($res === false) 
+                        {
+                            SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                        }
 
-      // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                        // PHP 8.2 Fix: Check result before mysqli_fetch_array
 						if( $res && ($row = mysqli_fetch_array($res)) )
 						{
 							//error_log($row[0]);
@@ -750,18 +885,20 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 							$NEWLIST = rtrim($TRQLIST, ", ");
 							SLOG( sprintf( '[GET_CC_SEQT %s:%s] RE CHECK TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-							$sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+							// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+                            $sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 							error_log($sql);
 							SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 							$res = mysqli_query($conn, $sql);
-       // PHP 8.2 Fix: Added error handling for mysqli_query
-       if ($res === false) {
-       	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-       }
 
+                            // PHP 8.2 Fix: Added error handling for mysqli_query
+                            if ($res === false) 
+                            {
+                                SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                            }
 
-       // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                            // PHP 8.2 Fix: Check result before mysqli_fetch_array
 							if( $res && ($row = mysqli_fetch_array($res)) )
 							{
 								//error_log($row[0]);
@@ -786,29 +923,44 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 				}
 				else
 				{
-					for( $i=$TRORDER-1; $i<$TRCOUNT; $i++ )
+					// v1.7.0: 크로스콜 리턴 시 이미 시도한 Q 건너뛰기
+					$effective_trorder = $TRORDER;
+					if ($IS_CROSSCALL_INCOMING == 'Y' && !empty($CC_ORIGIN_Q)) {
+						for ($k = 0; $k < $TRCOUNT; $k++) {
+							if ($QLIST[$k] == $CC_ORIGIN_Q) {
+								$effective_trorder = $k + 2;
+								if ($effective_trorder > $TRCOUNT) $effective_trorder = 1;
+								SLOG( sprintf( '[GET_CC_SEQT %s:%s] CROSSCALL RETURN: Adjusting TRORDER from %s to %s (skip CC_ORIGIN_Q=%s)',
+									$DID, $CID, $TRORDER, $effective_trorder, $CC_ORIGIN_Q ) );
+								break;
+							}
+						}
+					}
+
+					for( $i=$effective_trorder-1; $i<$TRCOUNT; $i++ )
 					{
 						$TRQLIST =  $TRQLIST."'".$QLIST[$i]."'".",";
 					}
-					for( $j=0; $j<$TRORDER-1; $j++ )
+					for( $j=0; $j<$effective_trorder-1; $j++ )
 					{
 						$TRQLIST =  $TRQLIST."'".$QLIST[$j]."'".",";
 					}
 					$NEWLIST = rtrim($TRQLIST, ", ");
 					SLOG( sprintf( '[GET_CC_SEQT %s:%s] TRQLIST:%s', $DID, $CID, $NEWLIST ) );
 
-					$sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
+					// v1.6.0: QList에 있는 Q만 조회하도록 WHERE 조건 추가
+					$sql = "select m.transfer_q_number, m.transfer_order_num from T_SEQUENCE_TRANSFER_CALL AS m INNER JOIN T_Q_EXTENSION AS e on m.transfer_q_number=e.q_num INNER JOIN T_EXTENSION AS t on e.ext_number=t.ext_number where m.company_id=$COMPANY_ID and m.transfer_q_number IN ($NEWLIST) and t.call_status=0 and t.is_status=1 group by e.q_num order by field( m.transfer_q_number, $NEWLIST ) limit 1;";
 
 					error_log($sql);
 					SLOG( sprintf( '[GET_CC_SEQT %s:%s] %s', $DID, $CID, $sql ) );
 					$res = mysqli_query($conn, $sql);
-     // PHP 8.2 Fix: Added error handling for mysqli_query
-     if ($res === false) {
-     	SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
-     }
 
+                    // PHP 8.2 Fix: Added error handling for mysqli_query
+                    if ($res === false) {
+                        SLOG( sprintf( '[Query Error %s:%s] %s', $DID, $CID, mysqli_error($conn) ) );
+                    }
 
-     // PHP 8.2 Fix: Check result before mysqli_fetch_array
+                    // PHP 8.2 Fix: Check result before mysqli_fetch_array
 					if( $res && ($row = mysqli_fetch_array($res)) )
 					{
 						//error_log($row[0]);
@@ -818,14 +970,16 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 						$RESULT->tr_next_did  = $DIDLIST[$RESULT->tr_order_id-1];
 						$RESULT->tr_order_id++;
 
-						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NORDER:%s', $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
+						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ:%s NEXTDID:%s TRORDER:%s NEXTTORDER:%s', 
+                                        $DID, $CID, $row[0], $RESULT->tr_next_did, $row[1], $RESULT->tr_order_id ) );
 					}
 					else
 					{
 						$RESULT->tr_next_q     = $MYQ;
 						$RESULT->tr_next_did 	= $DID;
 						$RESULT->tr_order_id 	= 1;
-						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ(TRQ):%s NEXTDID:%s TRORDER:%s', $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
+						SLOG( sprintf( '[GET_CC_SEQT %s:%s] NEXTQ(TRQ):%s NEXTDID:%s TRORDER:%s', 
+                                        $DID, $CID, $RESULT->tr_next_q, $RESULT->tr_next_did, $RESULT->tr_order_id ) );
 					}
 					$count= ($res !== false) ? mysqli_num_rows($res) : 0; // PHP 8.2 Fix: Check result before mysqli_num_rows
 				}
@@ -884,9 +1038,10 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 		};
 
 		// 자기 pbx_id와 다음 Q의 pbx_id 비교
+		// v1.5.1: MYQ 비교 조건 제거 - MYQ가 다른 장비에 있을 수 있음
 		if ($RESULT->my_q_pbx_id != '0' && $RESULT->tr_next_q_pbx_id != '0' &&
 		    $RESULT->my_q_pbx_id != $RESULT->tr_next_q_pbx_id &&
-		    $RESULT->tr_next_q != '0' && $RESULT->tr_next_q != $MYQ) {
+		    $RESULT->tr_next_q != '0') {
 
 			// v1.5.0: 통일된 크로스콜 형식 - 모든 크로스콜에 동일한 형식 사용
 			// 형식: crosscall_prefix + DID + TARGET_Q + NEXT_Q
@@ -929,6 +1084,11 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 
 				SLOG( sprintf( '[GET_Q_STEP2 %s:%s] CROSSCALL (from incoming) REQUIRED! my_pbx=%s, target_pbx=%s, target_q=%s, next_q=%s, prefix=%s, dial=%s',
 					$DID, $CID, $RESULT->my_q_pbx_id, $RESULT->tr_next_q_pbx_id, $target_q, $next_q, $RESULT->crosscall_prefix, $crosscall_dial ) );
+
+				// 2026-02-02: CrossCall 발신 시 Original Linkedid 저장 (key = crosscall_did + CID)
+				if (!empty($LINKEDID)) {
+					save_crosscall_link($conn, $crosscall_did, $CID, $LINKEDID, $CALL_ID, $COMPANY_ID);
+				}
 			} else {
 				// 일반 크로스콜 (A장비 -> B장비로 새로운 크로스콜)
 				$RESULT->is_crosscall_required = 'Y';
@@ -943,6 +1103,11 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 
 				SLOG( sprintf( '[GET_Q_STEP2 %s:%s] CROSSCALL REQUIRED! my_pbx=%s, target_pbx=%s, target_q=%s, next_q=%s, prefix=%s, dial=%s',
 					$DID, $CID, $RESULT->my_q_pbx_id, $RESULT->tr_next_q_pbx_id, $target_q, $next_q, $RESULT->crosscall_prefix, $crosscall_dial ) );
+
+				// 2026-02-02: CrossCall 발신 시 Original Linkedid 저장 (key = crosscall_did + CID)
+				if (!empty($LINKEDID)) {
+					save_crosscall_link($conn, $crosscall_did, $CID, $LINKEDID, $CALL_ID, $COMPANY_ID);
+				}
 			}
 		} else {
 			// 같은 장비 -> 일반 전송
@@ -1025,9 +1190,12 @@ include_once 'pbx_config.php';  // 2026-01-29 v1.4.0: IP 기반 PBX 설정
 												$JSON_REQUEST->TRCOUNT,
 												$JSON_REQUEST->TRORDER,
 												$JSON_REQUEST->DIDLIST,
+												$JSON_REQUEST->PBXIDLIST,
 												$CC_ORIGIN_Q,
 												$CC_ORIGINAL_DID,
-												$IS_CROSSCALL_INCOMING );
+												$IS_CROSSCALL_INCOMING,
+												$JSON_REQUEST->LINKEDID ?? '',
+												$JSON_REQUEST->CALL_ID ?? '' );
 
 				}
 			} 

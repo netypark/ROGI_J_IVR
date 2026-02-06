@@ -2,12 +2,17 @@
 /**
  * PBX Configuration Helper Functions
  * ===================================
- * Date: 2026-01-30
- * Version: 1.3.0
+ * Date: 2026-02-05
+ * Version: 2.0.0
  *
  * IP 기반 PBX 장비 식별 및 크로스콜 설정 관리
  * - 이중화 서버 지원 (Primary/Secondary)
  * - 장비별 crosscall prefix 관리
+ *
+ * v2.0.0 변경사항:
+ * - T_PBX_CONFIG 테이블 대신 T_PBX 테이블 사용
+ * - IP 매칭: server_ip → pbx_ip1/pbx_ip2 (OR 조건)
+ * - 다른 시스템과 공유 가능한 테이블 구조
  *
  * v1.3.0 변경사항:
  * - return_prefix 컬럼 삭제 (모든 크로스콜이 crosscall_prefix 사용)
@@ -28,24 +33,47 @@ $_PBX_CONFIG_CACHE = null;
  * @return string 서버 IP 주소
  */
 function get_my_server_ip() {
-    // 방법 1: $_SERVER['SERVER_ADDR'] (Apache/Nginx)
-    if (!empty($_SERVER['SERVER_ADDR'])) {
+    // 방법 1: $_SERVER['SERVER_ADDR'] (Apache/Nginx) - 127.0.0.1 제외
+    if (!empty($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR'] != '127.0.0.1') {
         return $_SERVER['SERVER_ADDR'];
     }
 
-    // 방법 2: gethostbyname (CLI 환경)
-    $hostname = gethostname();
-    if ($hostname) {
-        $ip = gethostbyname($hostname);
-        if ($ip && $ip != $hostname) {
+    // 방법 2: ip addr 명령어로 실제 네트워크 인터페이스 IP 조회 (가장 신뢰할 수 있음)
+    $output = shell_exec("ip addr show 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print \$2}' | cut -d'/' -f1");
+    if ($output && trim($output)) {
+        $ip = trim($output);
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             return $ip;
         }
     }
 
-    // 방법 3: 네트워크 인터페이스에서 조회 (Linux)
-    $output = shell_exec("hostname -I 2>/dev/null | awk '{print $1}'");
-    if ($output) {
-        return trim($output);
+    // 방법 3: hostname -I (대체 방법)
+    $output = shell_exec("hostname -I 2>/dev/null | awk '{print \$1}'");
+    if ($output && trim($output)) {
+        $ip = trim($output);
+        if ($ip != '127.0.0.1' && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return $ip;
+        }
+    }
+
+    // 방법 4: gethostbyname (CLI 환경)
+    $hostname = gethostname();
+    if ($hostname) {
+        $ip = gethostbyname($hostname);
+        if ($ip && $ip != $hostname && $ip != '127.0.0.1') {
+            return $ip;
+        }
+    }
+
+    // 방법 5: 특정 인터페이스 직접 조회
+    foreach (['eth0', 'ens192', 'ens160', 'enp0s3'] as $iface) {
+        $output = shell_exec("ip addr show $iface 2>/dev/null | grep 'inet ' | awk '{print \$2}' | cut -d'/' -f1");
+        if ($output && trim($output)) {
+            $ip = trim($output);
+            if ($ip != '127.0.0.1' && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                return $ip;
+            }
+        }
     }
 
     return '127.0.0.1';
@@ -53,6 +81,7 @@ function get_my_server_ip() {
 
 /**
  * IP로 자기 PBX 정보 조회 (캐시 사용)
+ * v2.0.0: T_PBX 테이블 사용 (pbx_ip1/pbx_ip2 OR 매칭)
  * @param mysqli $conn DB 연결
  * @param string $server_ip 서버 IP (null이면 자동 감지)
  * @return object|null PBX 설정 정보
@@ -70,14 +99,17 @@ function get_my_pbx_config($conn, $server_ip = null) {
         $server_ip = get_my_server_ip();
     }
 
-    $sql = "SELECT pbx_id, pbx_name, server_ip, server_name, crosscall_prefix, q_length, origin_q_length
-            FROM T_PBX_CONFIG
-            WHERE server_ip = '" . mysqli_real_escape_string($conn, $server_ip) . "'
-            AND is_active = 'Y'
+    // v2.0.0: LOGI.T_PBX 테이블 사용, pbx_ip1/pbx_ip2/pbx_vip로 매칭
+    $escaped_ip = mysqli_real_escape_string($conn, $server_ip);
+    $sql = "SELECT pbx_id, pbx_name, pbx_ip1, pbx_ip2, pbx_vip, crosscall_prefix, q_length, origin_q_length
+            FROM LOGI.T_PBX
+            WHERE pbx_ip1 = '$escaped_ip' OR pbx_ip2 = '$escaped_ip' OR pbx_vip = '$escaped_ip'
             LIMIT 1";
 
     $res = mysqli_query($conn, $sql);
     if ($res && ($row = mysqli_fetch_object($res))) {
+        // 하위 호환성: server_ip 필드 추가
+        $row->server_ip = $server_ip;
         $_PBX_CONFIG_CACHE = $row;
         return $row;
     }
@@ -86,8 +118,9 @@ function get_my_pbx_config($conn, $server_ip = null) {
     $default = new stdClass();
     $default->pbx_id = '0';
     $default->pbx_name = 'Unknown';
-    $default->server_ip = $server_ip;
-    $default->server_name = 'Unknown';
+    $default->pbx_ip1 = $server_ip;
+    $default->pbx_ip2 = '';
+    $default->server_ip = $server_ip;  // 하위 호환성
     $default->crosscall_prefix = '99';
     $default->q_length = 3;
     $default->origin_q_length = 3;
@@ -130,15 +163,16 @@ function get_my_return_prefix($conn) {
 
 /**
  * 대상 pbx_id의 crosscall prefix 조회
+ * v2.0.0: T_PBX 테이블 사용
  * @param mysqli $conn DB 연결
  * @param int $target_pbx_id 대상 pbx_id
  * @return object|null prefix 정보
  */
 function get_target_pbx_prefix($conn, $target_pbx_id) {
+    // v2.0.0: LOGI.T_PBX 테이블 사용
     $sql = "SELECT crosscall_prefix, q_length, origin_q_length
-            FROM T_PBX_CONFIG
+            FROM LOGI.T_PBX
             WHERE pbx_id = " . intval($target_pbx_id) . "
-            AND is_active = 'Y'
             LIMIT 1";
 
     $res = mysqli_query($conn, $sql);
@@ -166,8 +200,8 @@ function get_pbx_id_for_queue($conn, $q_num) {
     }
 
     $sql = "SELECT c.pbx_id
-            FROM T_QUEUE AS q
-            INNER JOIN T_COMPANY AS c ON q.master_id = c.master_id AND c.company_level = 0
+            FROM LOGI.T_QUEUE AS q
+            INNER JOIN LOGI.T_COMPANY AS c ON q.master_id = c.master_id AND c.company_level = 0
             WHERE q.q_num = '" . mysqli_real_escape_string($conn, $q_num) . "'
             LIMIT 1";
 
@@ -257,6 +291,7 @@ function generate_return_crosscall_dial($conn, $did, $target_q, $next_q, $target
 
 /**
  * 크로스콜 수신 번호 파싱
+ * v2.0.0: T_PBX 테이블 사용
  * v1.2.0: 통일된 형식 - 항상 6자리 Q번호 (TARGET_Q + NEXT_Q)
  *
  * 형식: crosscall_prefix + DID + TARGET_Q(3) + NEXT_Q(3)
@@ -268,10 +303,9 @@ function generate_return_crosscall_dial($conn, $did, $target_q, $next_q, $target
  * @return array|null 파싱 결과 [type, prefix, original_did, target_q, next_q, source_pbx_id]
  */
 function parse_crosscall_did($conn, $did) {
-    // 모든 prefix 조회
+    // v2.0.0: LOGI.T_PBX 테이블에서 모든 prefix 조회
     $sql = "SELECT DISTINCT crosscall_prefix, q_length, origin_q_length, pbx_id
-            FROM T_PBX_CONFIG
-            WHERE is_active = 'Y'
+            FROM LOGI.T_PBX
             ORDER BY LENGTH(crosscall_prefix) DESC";
 
     $res = mysqli_query($conn, $sql);
