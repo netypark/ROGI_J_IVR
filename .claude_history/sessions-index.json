@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "sessionId": "d8839748-b3b4-4c87-8a6b-b11cc12d4956",
+      "fullPath": "/home/asterisk/.claude/projects/-home-asterisk-WEB-J-IVR/d8839748-b3b4-4c87-8a6b-b11cc12d4956.jsonl",
+      "fileMtime": 1769785852491,
+      "firstPrompt": "No prompt",
+      "messageCount": 2,
+      "created": "2026-01-30T15:10:52.026Z",
+      "modified": "2026-01-30T15:10:52.485Z",
+      "gitBranch": "main",
+      "projectPath": "/home/asterisk/WEB/J_IVR",
+      "isSidechain": false
+    }
+  ],
+  "originalPath": "/home/asterisk/WEB/J_IVR"
+}
