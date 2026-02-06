@@ -1,0 +1,2160 @@
+{
+	"MULTI_STEP_DATAS": 
+	{
+
+		"FUNC_DIAL_ANSWER": 
+		{
+			"FUNCTION": "F_NOP",
+			"ARGS": 
+			{
+				"PHP_EXEC_COMMON": 
+				[
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND": "return $this->F_GET_VARIABLE( 'C_LEVEL' ) == 'V';",
+						"PHP_EXEC":
+						[
+							"$this->LOG( sprintf('FUNC_DIAL_ANSWER AFTER') );",
+							"$this->F_PUT_VARIABLE('ANSWER_TIME', date('Y-m-d H:i:s', time()));",
+							"$this->F_PUT_VARIABLE('QRY_TYPE', 'C');",
+							""
+						],
+						"NEXT_STEPS": ["UPDATE_CALL_STATUS"]
+					},
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC":
+						[
+							"$this->LOG( sprintf('FUNC_DIAL_ANSWER AFTER') );",
+							"$this->F_PUT_VARIABLE('ANSWER_TIME', date('Y-m-d H:i:s', time()));",
+							"$this->F_PUT_VARIABLE('QRY_TYPE', 'C');",
+							""
+						],
+						"NEXT_STEPS": ["UPDATE_CALL_STATUS2"]
+					}
+				]
+			}
+		},
+		
+		"FUNC_DIAL_ANSWER_AFTER" : {
+			"FUNCTION" : "F_NOP",
+			"ARGS" : {
+				"NEXT_STEPS_VIA_RESULT" : [
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: "$this->LOG('FUNC_DIAL_ANSWER_AFTER');",
+						"NEXT_STEPS"	: []
+					}
+				]
+			}
+		},
+
+		"HANG_UP_CALL_IN":
+		{
+			"FUNCTION": "F_MULTI_STEP_DTMF",
+			"ARGS":
+			{
+				"PHP_EXEC_COMMON":
+				[
+					"$this->LOG( sprintf('HANG_UP_CALL_IN AFTER') );",
+					"$this->F_PUT_VARIABLE('END_TIME', date('Y-m-d H:i:s', time()));",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT":
+				[
+					{
+						"PHP_COND": "$_isCrossCallIn = $this->F_GET_VARIABLE('IS_CROSSCALL_INCOMING'); return ($_isCrossCallIn == 'Y');",
+						"PHP_EXEC": "$this->LOG('HANG_UP_CALL_IN: Skip call history for crosscall incoming');",
+						"NEXT_STEPS": [""]
+					},
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC": "",
+						"NEXT_STEPS": ["UPDATE_CALL_ONLINE"]
+					}
+				]
+			}
+		},
+
+		"HANG_UP_CALL_IN_AFTER" : {
+			"FUNCTION" : "F_MULTI_STEP_DTMF",
+			"ARGS" : {
+				"NEXT_STEPS_VIA_DTMF" : [
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: "$this->LOG('HANG_UP_CALL_IN_AFTER');",
+						"NEXT_STEPS"	: []
+					}
+				]
+			}
+		},
+		
+		"STACK_FOR_STEP": 
+		[
+			"INIT_VARIABLE"
+		],
+
+		"INIT_VARIABLE": 
+		{
+			"FUNCTION": "F_NOP",
+			"ARGS": 
+			{
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC": 
+						[
+							"$CID = $this->AGI_DATA->agi_callerid;",
+							"$this->F_PUT_VARIABLE('CID', $CID);",
+							"$_dnid = $this->AGI_DATA->agi_dnid;",
+							"$_did = (!empty($_dnid) && $_dnid !== 'unknown') ? $_dnid : $this->CALL_TO_FROM_DID;",
+							"$this->F_PUT_VARIABLE('DID', $_did);",
+							"$STR_START= strpos($this->AGI_DATA->agi_channel, 'PJSIP') + 6;",
+							"$CH_NAME = substr($this->AGI_DATA->agi_channel, $STR_START);",
+							"$STR_END= strpos($CH_NAME, '-');",
+							"$CH_NAME = substr($CH_NAME, 0, $STR_END);",
+							"$this->F_PUT_VARIABLE('TMP_DID',  $CH_NAME );" ,
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							"$this->F_PUT_VARIABLE('MEDIA_TYPE', 'FILE');",
+							"$this->F_PUT_VARIABLE('AGENT_CON_TRY', 0);",
+							"$STR_START= strpos($this->AGI_DATA->agi_channel, 'PJSIP') + 6;",
+							"$CH_NAME = substr($this->AGI_DATA->agi_channel, $STR_START);",
+							"$CALL_ID = $CH_NAME.'-'.date('YmdHis');",
+							"$this->F_PUT_VARIABLE('CALL_ID', $CALL_ID);",
+							"$LINKEDID = isset($this->AGI_DATA->agi_linkedid) ? $this->AGI_DATA->agi_linkedid : $this->AGI_DATA->agi_uniqueid;",
+							"$this->F_PUT_VARIABLE('LINKEDID', $LINKEDID);",
+							"$this->F_PUT_VARIABLE('AGENT_NUM', '');",
+							"$this->F_PUT_VARIABLE('CALLBACK_NUM', '');",
+							"$this->F_PUT_VARIABLE('WAIT_TM', '120');",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '0');",
+							"$this->F_PUT_VARIABLE('CALL_DIRECTION', 'O');",
+							"$this->F_PUT_VARIABLE('START_TIME', date('Y-m-d H:i:s', time()));",
+							"$this->F_PUT_VARIABLE('RING_TIME', '');",
+							"$this->F_PUT_VARIABLE('ANSWER_TIME', '');",
+							"$this->F_PUT_VARIABLE('END_TIME', '');",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'N');",
+							"$this->F_PUT_VARIABLE('SROUTING', '1');",
+							"$this->F_PUT_VARIABLE('TR_Q_ORDER', 0);",
+							"$this->F_PUT_VARIABLE('TRANSFER_COMPANY_ID', '');",
+							"$this->F_PUT_VARIABLE('TRANSFER_COMPANY_DID', '');",
+							"$this->F_PUT_VARIABLE('C_LEVEL', '');",
+							"$this->F_PUT_VARIABLE('CC_TRANSFER_RETRY_COUNT', 0);",
+							"$this->F_PUT_VARIABLE('CC_TRANSFER_RETRY_TIME', 0);",
+							"$this->F_PUT_VARIABLE('CC_TRANSFER_DIFF_TIME', 0);",
+							"$this->F_PUT_VARIABLE('DEC_VIP', 'N');",
+							""
+						],
+
+						"NEXT_STEPS": ["CHECK_CROSSCALL_PREFIX"]
+					}
+				]
+			}
+		},
+
+		"CHECK_CROSSCALL_PREFIX" :
+		{
+			"FUNCTION" : "F_MULTI_STEP_INTERACT",
+			"ARGS" :
+			{
+				"COMMAND": "HTTP_ACCESS",
+				"PARAMS":
+				{
+					"URL"       : "http://127.0.0.1/API/checkCrossCallPrefix.php",
+					"REQ"       : "CHECK_CROSSCALL",
+					"DID"       : "VAR-DID",
+					"CID"       : "VAR-CID"
+				},
+
+				"PHP_EXEC_AFTER" :
+				[
+					"$this->LOG( sprintf('CHECK_CROSSCALL_PREFIX AFTER') );",
+					"$this->F_PUT_VARIABLE( 'IS_CROSSCALL', $JSON_RESULT->JSON_RESULT->MESSAGE->IS_CROSSCALL );",
+					"$this->F_PUT_VARIABLE( 'CC_CROSSCALL_TYPE', $JSON_RESULT->JSON_RESULT->MESSAGE->CROSSCALL_TYPE );",
+					"$this->F_PUT_VARIABLE( 'CC_ORIGINAL_DID', $JSON_RESULT->JSON_RESULT->MESSAGE->ORIGINAL_DID );",
+					"$this->F_PUT_VARIABLE( 'CC_TARGET_Q', $JSON_RESULT->JSON_RESULT->MESSAGE->TARGET_Q );",
+					"$this->F_PUT_VARIABLE( 'CC_ORIGIN_Q', $JSON_RESULT->JSON_RESULT->MESSAGE->ORIGIN_Q );",
+					"$this->F_PUT_VARIABLE( 'CC_RETURN_PREFIX', $JSON_RESULT->JSON_RESULT->MESSAGE->RETURN_PREFIX ?? '' );",
+					"$this->F_PUT_VARIABLE( 'CC_COMPANY_ID', $JSON_RESULT->JSON_RESULT->MESSAGE->company_id ?? 0 );",
+					"$this->F_PUT_VARIABLE( 'CC_MASTER_ID', $JSON_RESULT->JSON_RESULT->MESSAGE->master_id ?? 0 );",
+					"$this->F_PUT_VARIABLE( 'CC_ALLOC_Q', $JSON_RESULT->JSON_RESULT->MESSAGE->allocQ ?? '' );",
+					"$this->F_PUT_VARIABLE( 'CC_TR_COUNT', $JSON_RESULT->JSON_RESULT->MESSAGE->tr_count ?? 0 );",
+					"$this->F_PUT_VARIABLE( 'CC_TR_ORDER', $JSON_RESULT->JSON_RESULT->MESSAGE->tr_order ?? 1 );",
+					"$this->F_PUT_VARIABLE( 'CC_TR_OPTION', $JSON_RESULT->JSON_RESULT->MESSAGE->tr_option ?? 'N' );",
+					"$this->F_PUT_VARIABLE( 'CC_TR_TIME_FIRST', $JSON_RESULT->JSON_RESULT->MESSAGE->tr_time_first ?? 10 );",
+					"$this->F_PUT_VARIABLE( 'CC_TR_TIME_SECOND', $JSON_RESULT->JSON_RESULT->MESSAGE->tr_time_second ?? 10 );",
+					"$this->F_PUT_VARIABLE( 'CC_WORKCONDITION', $JSON_RESULT->JSON_RESULT->MESSAGE->is_cc_workcondition ?? 'END' );",
+					"$this->F_PUT_VARIABLE( 'CC_NEXT_Q', $JSON_RESULT->JSON_RESULT->MESSAGE->next_q ?? '' );",
+					"$this->F_PUT_VARIABLE( 'CC_NEXT_DID', $JSON_RESULT->JSON_RESULT->MESSAGE->next_did ?? '' );",
+					"$this->F_PUT_VARIABLE( 'CC_IS_NEXT_CROSSCALL', $JSON_RESULT->JSON_RESULT->MESSAGE->is_next_crosscall ?? 'N' );",
+					"$this->F_PUT_VARIABLE( 'CC_NEXT_CROSSCALL_DIAL', $JSON_RESULT->JSON_RESULT->MESSAGE->next_crosscall_dial ?? '' );",
+					"$TR_Q_LIST = is_array($JSON_RESULT->JSON_RESULT->MESSAGE->tr_q_list) ? $JSON_RESULT->JSON_RESULT->MESSAGE->tr_q_list : array();",
+					"$TR_DID_LIST = is_array($JSON_RESULT->JSON_RESULT->MESSAGE->tr_did_list) ? $JSON_RESULT->JSON_RESULT->MESSAGE->tr_did_list : array();",
+					"$TR_PBX_ID_LIST = is_array($JSON_RESULT->JSON_RESULT->MESSAGE->tr_pbx_id_list) ? $JSON_RESULT->JSON_RESULT->MESSAGE->tr_pbx_id_list : array();",
+					"$this->F_PUT_VARIABLE( 'TR_Q_LIST', $TR_Q_LIST );",
+					"$this->F_PUT_VARIABLE( 'TR_DID_LIST', $TR_DID_LIST );",
+					"$this->F_PUT_VARIABLE( 'TR_PBX_ID_LIST', $TR_PBX_ID_LIST );",
+					"$this->F_PUT_VARIABLE( 'TR_COUNT', count($TR_Q_LIST) );",
+					"$this->F_PUT_VARIABLE( 'ORIGINAL_LINKEDID', $JSON_RESULT->JSON_RESULT->MESSAGE->original_linkedid ?? '' );",
+					"$this->F_PUT_VARIABLE( 'ORIGINAL_CALL_ID', $JSON_RESULT->JSON_RESULT->MESSAGE->original_call_id ?? '' );",
+					""
+				],
+
+				"NEXT_STEPS_VIA_RESULT" :
+				[
+					{
+						"PHP_COND"      : "return ( $this->F_GET_VARIABLE('IS_CROSSCALL') == 'Y' && $this->F_GET_VARIABLE('CC_CROSSCALL_TYPE') == 'INCOMING' );",
+						"PHP_EXEC"      :
+						[
+							"$this->LOG( sprintf('CROSSCALL INCOMING! -> Direct to Q: %s, Origin Q: %s, TR_ORDER: %s/%s', $this->F_GET_VARIABLE('CC_TARGET_Q'), $this->F_GET_VARIABLE('CC_ORIGIN_Q'), $this->F_GET_VARIABLE('CC_TR_ORDER'), $this->F_GET_VARIABLE('CC_TR_COUNT')) );",
+							"$this->F_PUT_VARIABLE('DID', $this->F_GET_VARIABLE('CC_ORIGINAL_DID'));",
+							"$this->F_PUT_VARIABLE('COMPANY_ID', $this->F_GET_VARIABLE('CC_COMPANY_ID'));",
+							"$this->F_PUT_VARIABLE('MASTER_ID', $this->F_GET_VARIABLE('CC_MASTER_ID'));",
+							"$this->F_PUT_VARIABLE('ALLOC_Q', $this->F_GET_VARIABLE('CC_ALLOC_Q'));",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', $this->F_GET_VARIABLE('CC_TR_ORDER'));",
+							"$this->F_PUT_VARIABLE('TR_OPTION', $this->F_GET_VARIABLE('CC_TR_OPTION'));",
+							"$WK_COND = $this->F_GET_VARIABLE('CC_WORKCONDITION');",
+							"if($WK_COND == 'WORK') { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SMY'); } elseif($WK_COND == 'PEAK') { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SEQ'); } else { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_DIR'); }",
+							"$this->LOG( sprintf('CROSSCALL INCOMING - SET GET_TYPE=%s from CC_WORKCONDITION=%s', $this->F_GET_VARIABLE('GET_TYPE'), $WK_COND) );",
+							"$this->F_PUT_VARIABLE('TR_TIME_FIRST', $this->F_GET_VARIABLE('CC_TR_TIME_FIRST'));",
+							"$this->F_PUT_VARIABLE('TR_TIME_SECOND', $this->F_GET_VARIABLE('CC_TR_TIME_SECOND'));",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $this->F_GET_VARIABLE('CC_TARGET_Q'));",
+							"$this->F_PUT_VARIABLE('MYQ', $this->F_GET_VARIABLE('CC_TARGET_Q'));",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'X');",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('CC_TR_TIME_SECOND'));",
+							"$this->F_PUT_VARIABLE('IS_CROSSCALL_INCOMING', 'Y');",
+							""
+						],
+						"NEXT_STEPS"   : [ "CROSSCALL_DIRECT_Q" ]
+					},
+					{
+						"PHP_COND"      : "return ( $this->F_GET_VARIABLE('IS_CROSSCALL') == 'Y' && $this->F_GET_VARIABLE('CC_CROSSCALL_TYPE') == 'RETURN' );",
+						"PHP_EXEC"      :
+						[
+							"$this->LOG( sprintf('CROSSCALL RETURN! -> Direct to Q: %s, TR_ORDER: %s/%s', $this->F_GET_VARIABLE('CC_TARGET_Q'), $this->F_GET_VARIABLE('CC_TR_ORDER'), $this->F_GET_VARIABLE('CC_TR_COUNT')) );",
+							"$this->F_PUT_VARIABLE('DID', $this->F_GET_VARIABLE('CC_ORIGINAL_DID'));",
+							"$this->F_PUT_VARIABLE('COMPANY_ID', $this->F_GET_VARIABLE('CC_COMPANY_ID'));",
+							"$this->F_PUT_VARIABLE('MASTER_ID', $this->F_GET_VARIABLE('CC_MASTER_ID'));",
+							"$this->F_PUT_VARIABLE('ALLOC_Q', $this->F_GET_VARIABLE('CC_ALLOC_Q'));",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', $this->F_GET_VARIABLE('CC_TR_ORDER'));",
+							"$this->F_PUT_VARIABLE('TR_OPTION', $this->F_GET_VARIABLE('CC_TR_OPTION'));",
+							"$WK_COND = $this->F_GET_VARIABLE('CC_WORKCONDITION');",
+							"if($WK_COND == 'WORK') { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SMY'); } elseif($WK_COND == 'PEAK') { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SEQ'); } else { $this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_DIR'); }",
+							"$this->LOG( sprintf('CROSSCALL RETURN - SET GET_TYPE=%s from CC_WORKCONDITION=%s', $this->F_GET_VARIABLE('GET_TYPE'), $WK_COND) );",
+							"$this->F_PUT_VARIABLE('TR_TIME_FIRST', $this->F_GET_VARIABLE('CC_TR_TIME_FIRST'));",
+							"$this->F_PUT_VARIABLE('TR_TIME_SECOND', $this->F_GET_VARIABLE('CC_TR_TIME_SECOND'));",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $this->F_GET_VARIABLE('CC_TARGET_Q'));",
+							"$this->F_PUT_VARIABLE('MYQ', $this->F_GET_VARIABLE('CC_TARGET_Q'));",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'R');",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('CC_TR_TIME_SECOND'));",
+							""
+						],
+						"NEXT_STEPS"   : [ "CROSSCALL_DIRECT_Q" ]
+					},
+					{
+						"PHP_COND"      : "return true;",
+						"PHP_EXEC"      :
+						[
+							"$this->LOG( sprintf('Normal call -> Continue to GET_LOGI_DATA') );",
+							""
+						],
+						"NEXT_STEPS"   : [ "GET_LOGI_DATA" ]
+					}
+				]
+			}
+		},
+
+		"CROSSCALL_DIRECT_Q" :
+		{
+			"FUNCTION" : "F_NOP",
+			"ARGS" :
+			{
+				"PHP_EXEC_COMMON" :
+				[
+					"$this->LOG( sprintf('CROSSCALL_DIRECT_Q - Connecting to Q: %s', $this->F_GET_VARIABLE('CC_TARGET_Q')) );",
+					"$this->F_PUT_VARIABLE('RING_TIME', date('Y-m-d H:i:s', time()));",
+					""
+				],
+
+				"NEXT_STEPS_VIA_RESULT" :
+				[
+					{
+						"PHP_COND"      : "return true;",
+						"PHP_EXEC"      :
+						[
+							""
+						],
+						"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+					}
+				]
+			}
+		},
+
+		"RETURN_CROSSCALL" :
+		{
+			"FUNCTION" : "F_MULTI_STEP_CALL_TRANSFER",
+			"ARGS" :
+			{
+				"PHP_EXEC_COMMON" :
+				[
+					"$EXISTING_RETURN_NUM = $this->F_GET_VARIABLE('RETURN_CROSSCALL_NUMBER');",
+					"if (empty($EXISTING_RETURN_NUM)) {",
+					"  $RETURN_PREFIX = $this->F_GET_VARIABLE('CC_RETURN_PREFIX');",
+					"  $ORIGINAL_DID = $this->F_GET_VARIABLE('CC_ORIGINAL_DID');",
+					"  $ORIGIN_Q = $this->F_GET_VARIABLE('CC_ORIGIN_Q');",
+					"  $RETURN_NUMBER = $RETURN_PREFIX . $ORIGINAL_DID . $ORIGIN_Q;",
+					"  $this->F_PUT_VARIABLE('RETURN_CROSSCALL_NUMBER', $RETURN_NUMBER);",
+					"  $this->LOG( sprintf('RETURN_CROSSCALL - Building return number: %s + %s + %s = %s', $RETURN_PREFIX, $ORIGINAL_DID, $ORIGIN_Q, $RETURN_NUMBER) );",
+					"} else {",
+					"  $this->LOG( sprintf('RETURN_CROSSCALL - Using existing return number: %s', $EXISTING_RETURN_NUM) );",
+					"}",
+					""
+				],
+				"TRANSFER_FROM" : "VAR-CID",
+				"TRANSFER_TO"	: "VAR-RETURN_CROSSCALL_NUMBER",
+				"RING_WAIT"		: "180",
+				"OPTIONS"		: [],
+				"PHP_EXEC_AFTER":
+				[
+					"$this->LOG( sprintf('RETURN_CROSSCALL - Transfer completed with status: %s', $this->F_GET_VARIABLE('DIALSTATUS')) );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT" :
+				[
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'ANSWER';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('RETURN_CROSSCALL - ANSWER') );",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'N');",
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('RETURN_CROSSCALL - No answer or failed') );",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'F');",
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					}
+				]
+			}
+		},
+
+		"GET_LOGI_DATA" : 
+		{
+	    	"FUNCTION" : "F_MULTI_STEP_INTERACT",
+	        "ARGS" : 
+	        {
+	       		"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+	            	"URL"       : "https://extorder.logisoft.co.kr/nautes/daeri/public",
+	               	"p_sDID"       : "VAR-DID",
+	               	"p_sCID"       : "VAR-CID"
+	            },
+	            
+	            "PHP_EXEC_AFTER" : 
+				[
+					"$this->LOG( sprintf('GET_LOGI_DATA AFTER') );",
+					"$this->F_PUT_VARIABLE( 'po_sInfo'      , $JSON_RESULT->po_sInfo );",
+					""
+				],
+				
+	            "NEXT_STEPS_VIA_RESULT" : 
+	            [
+	            	{
+	                  	"PHP_COND"      : "return true;",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	""
+	                  	],
+	                  
+	                  	"NEXT_STEPS"   : [ "UDP_SEND_TO_LOGI_DATA" ]
+	               	}
+	            ]
+			}
+		},
+
+		"UDP_SEND_TO_LOGI_DATA" : 
+		{
+			"FUNCTION": "F_EXTERNAL_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "UDP_INTERACT",
+				"UDP_HOST": "127.0.0.1",
+				"UDP_PORT": "2024",
+				"PARAMS": 
+				{
+					"METHOD": "CTI_posInfo",
+					"SEND_ONLY":true,
+          "PHONE_NO": "VAR-CID",
+          "DID_NO": "VAR-DID",
+					"po_sInfo":"VAR-po_sInfo"
+        },
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->verbose( sprintf('UDP_SEND_TO_LOGI_DATA AFTER') );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC": 
+						[
+							""
+						],
+						"NEXT_STEPS": [ "GET_COMPANY" ]
+					}
+				]
+			}
+		},
+
+		"GET_COMPANY" : 
+		{
+	    	"FUNCTION" : "F_MULTI_STEP_INTERACT",
+	        "ARGS" : 
+	        {
+	       		"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+	            	"URL"       : "http://127.0.0.1/API/getCompany_new.php",
+	               	"REQ"       : "GET_COMPANY",
+	               	"DID"       : "VAR-DID",
+	               	"CID"       : "VAR-CID",
+	               	"START_TIME": "VAR-START_TIME",
+	               	"CALL_ID"   : "VAR-CALL_ID"
+	            },
+	            
+	            "PHP_EXEC_AFTER" : 
+				[
+					"$this->LOG( sprintf('GET_COMPANY AFTER') );",
+					"$this->F_PUT_VARIABLE( 'RESULT_COMPANY'      , $JSON_RESULT->JSON_RESULT->MESSAGE->get_company );",
+					"$this->F_PUT_VARIABLE( 'COMPANY_ID'          , $JSON_RESULT->JSON_RESULT->MESSAGE->company_id );",
+					"$this->F_PUT_VARIABLE( 'COMPANY_DIDNUMBER'   , $JSON_RESULT->JSON_RESULT->MESSAGE->company_didnumber );",
+					"$this->F_PUT_VARIABLE( 'IS_ACTIVE'           , $JSON_RESULT->JSON_RESULT->MESSAGE->is_active );",
+					"$this->F_PUT_VARIABLE( 'MASTER_ID'           , $JSON_RESULT->JSON_RESULT->MESSAGE->master_id );",
+					"$this->F_PUT_VARIABLE( 'USE_DND'             , $JSON_RESULT->JSON_RESULT->MESSAGE->use_dnd );",
+					"$this->F_PUT_VARIABLE( 'USE_DID_ROUTE'       , $JSON_RESULT->JSON_RESULT->MESSAGE->use_did_route );",
+					"$this->F_PUT_VARIABLE( 'USE_CID_ROUTE'       , $JSON_RESULT->JSON_RESULT->MESSAGE->use_cid_route );",
+					"$this->F_PUT_VARIABLE( 'USE_DB_ROUTE'        , $JSON_RESULT->JSON_RESULT->MESSAGE->use_db_route );",
+					"$this->F_PUT_VARIABLE( 'USE_ARS'             , $JSON_RESULT->JSON_RESULT->MESSAGE->use_ars );",
+					"$this->F_PUT_VARIABLE( 'USE_CROSSCALL'       , $JSON_RESULT->JSON_RESULT->MESSAGE->use_crosscall );",
+					"$this->F_PUT_VARIABLE( 'ACTION'              , $JSON_RESULT->JSON_RESULT->MESSAGE->action );",
+					"$this->F_PUT_VARIABLE( 'TO_NUMBER'           , $JSON_RESULT->JSON_RESULT->MESSAGE->to_number );",
+					"$this->F_PUT_VARIABLE( 'WAIT_TIME'           , $JSON_RESULT->JSON_RESULT->MESSAGE->wait_time );",
+					"$this->F_PUT_VARIABLE( 'DB_RT_TO_EXTEN'      , $JSON_RESULT->JSON_RESULT->MESSAGE->dbr_to_extension );",
+					"$this->F_PUT_VARIABLE( 'VAC_MENT_DIR'        , $JSON_RESULT->JSON_RESULT->MESSAGE->vac_ment_dir );",
+					"$this->F_PUT_VARIABLE( 'INFO_MENT_DIR'       , $JSON_RESULT->JSON_RESULT->MESSAGE->info_ment_dir );",
+					"$this->F_PUT_VARIABLE( 'NOP_MENT_DIR'        , $JSON_RESULT->JSON_RESULT->MESSAGE->noinput_ment_dir );",
+					"$this->F_PUT_VARIABLE( 'WRP_MENT_DIR'        , $JSON_RESULT->JSON_RESULT->MESSAGE->wronginput_ment_dir );",
+					"$this->F_PUT_VARIABLE( 'ERR_MENT'            , $JSON_RESULT->JSON_RESULT->MESSAGE->error_ment_dir );",
+					"$this->F_PUT_VARIABLE( 'ALLOC_Q'             , $JSON_RESULT->JSON_RESULT->MESSAGE->allocQ );",
+					"$this->F_PUT_VARIABLE( 'IS_HOLIDAY'          , $JSON_RESULT->JSON_RESULT->MESSAGE->holiday );",
+					"$this->F_PUT_VARIABLE( 'HOLI_MENT_DIR'       , $JSON_RESULT->JSON_RESULT->MESSAGE->holiday_ment );",
+					"$this->F_PUT_VARIABLE( 'IS_RE_CALL_USE'      , $JSON_RESULT->JSON_RESULT->MESSAGE->is_re_call_use );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_TIME'        , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_time );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_TIME_TYPE'   , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_time_type );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_TYPE'        , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_type );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_CENTER_1'    , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_center_1 );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_CENTER_2'    , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_center_2 );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_USE_AQ'      , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_use_alba_q );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_AQ_TIME'     , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_alba_q_time );",
+					"$this->F_PUT_VARIABLE( 'RE_CALL_ALABQ'       , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call_alba_q );",
+					
+					"$this->F_PUT_VARIABLE( 'TR_COUNT'            , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_count );",
+					"$this->F_PUT_VARIABLE( 'TR_OPTION'           , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_option );",
+					"$this->F_PUT_VARIABLE( 'TR_TIME_FIRST'       , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_time_first );",
+					"$this->F_PUT_VARIABLE( 'TR_TIME_SECOND'      , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_time_second );",
+					"$this->F_PUT_VARIABLE( 'TR_COMPANY_LIST'     , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_company_list );",
+					"$this->F_PUT_VARIABLE( 'TR_Q_LIST'           , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_q_list );",
+					"$this->F_PUT_VARIABLE( 'TR_DID_LIST'         , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_did_list );",
+					"$this->F_PUT_VARIABLE( 'TR_PBX_ID_LIST'      , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_pbx_id_list );",
+					"$this->F_PUT_VARIABLE( 'TR_ORDER_ID'         , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_order_id );",									
+					
+					"$this->F_PUT_VARIABLE( 'WORK_COND'           , $JSON_RESULT->JSON_RESULT->MESSAGE->is_workcondition );",
+					"$this->F_PUT_VARIABLE( 'ARS_MENT_INFO'       , $JSON_RESULT->JSON_RESULT->MESSAGE->ment_info );",
+					"$this->F_PUT_VARIABLE( 'CC_WORK_COND'        , $JSON_RESULT->JSON_RESULT->MESSAGE->is_cc_workcondition );",
+					"$this->F_PUT_VARIABLE( 'RESULT_CUSTOMER'     , $JSON_RESULT->JSON_RESULT->MESSAGE->get_customer );",
+					"$this->F_PUT_VARIABLE( 'C_LEVEL'             , $JSON_RESULT->JSON_RESULT->MESSAGE->c_level );",
+					"$this->F_PUT_VARIABLE( 'NEXT_Q'              , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_next_q );",
+					"$this->F_PUT_VARIABLE( 'EMERGENCY'           , $JSON_RESULT->JSON_RESULT->MESSAGE->emergency );",
+					
+					"$WAIT_CNT=$JSON_RESULT->JSON_RESULT->MESSAGE->wait_time / 5;",
+					"$this->F_PUT_VARIABLE( 'WAIT_COUNT', $WAIT_CNT );",
+					""
+				],
+				
+	            "NEXT_STEPS_VIA_RESULT" : 
+	            [
+	            	{
+	                  	"PHP_COND"      : "return true;",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	""
+	                  	],
+	                  
+	                  	"NEXT_STEPS"   : [ "GET_CHECK" ]
+	               	}
+	            ]
+			}
+		},
+
+		"GET_CHECK" : 
+		{
+			"FUNCTION" : "F_NOP",
+			"ARGS" : 
+			{
+				"PHP_EXEC_COMMON" : 
+				[ 
+					"$this->LOG( sprintf('GET_CHECK AFTER') );",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_RESULT" : 
+				[
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('EMERGENCY') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('EMERGENCY STATUS') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('NEXT_Q');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_DND') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('USE DND') );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'D' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('C_LEVEL') == 'B' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('BLACK customer') );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '9' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('C_LEVEL') == 'V' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('VI customer') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('ALLOC_Q');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '8' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_DID_ROUTE') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use DID Route') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('TO_NUMBER');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '1' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "UDP_SEND_TO_CTI" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CID_ROUTE') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use DB Route') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('DB_RT_TO_EXTEN');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '2' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_DB_ROUTE') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use DB Route') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('DB_RT_TO_EXTEN');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '3' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('RE_CALL_USE_AQ') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'WORK' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use ALBA Q') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 0 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_ALBA_Q' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'A' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('RE_CALL_USE_AQ') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'PEAK' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use ALBA Q') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 0 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_ALBA_Q' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'A' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('RE_CALL_USE_AQ') == 'Y' ) && ( ( $this->F_GET_VARIABLE('CC_WORK_COND') =='END' ) || ( $this->F_GET_VARIABLE('CC_WORK_COND') =='VAC' ) );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Use ALBA Q') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 0 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_ALBA_Q_NOUSE' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', 'A' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_ARS') == 'Y' ) && ( $this->F_GET_VARIABLE('IS_HOLIDAY') == 'Y' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('ARS check ON -> Holiday') );",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE' );",
+							"$MENT_FILES = array();",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'INFO_MENT_DIR' ));",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'HOLI_MENT_DIR' ));",
+	                		"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_FILES);",
+	                		"$this->F_PUT_VARIABLE('SVC_TYPE', '7' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "업무종료_VAC_시나리오" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_ARS') == 'Y' ) && ( $this->F_GET_VARIABLE('WORK_COND') == 'END' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('ARS check ON -> End of Work') );",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE' );",
+							"$MENT_FILES = array();",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'INFO_MENT_DIR' ));",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'ARS_MENT_INFO' ));",
+	                		"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_FILES);",
+	                		"$this->F_PUT_VARIABLE('SVC_TYPE', '7' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "업무종료_VAC_시나리오" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_ARS') == 'Y' ) && ( $this->F_GET_VARIABLE('WORK_COND') == 'LUNCH' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('ARS check ON -> Lunch') );",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE' );",
+							"$MENT_FILES = array();",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'INFO_MENT_DIR' ));",
+	                		"array_push( $MENT_FILES, $this->F_GET_VARIABLE( 'ARS_MENT_INFO' ));",
+	                		"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_FILES);",
+	                		"$this->F_PUT_VARIABLE('SVC_TYPE', '7' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "업무종료_VAC_시나리오" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_ARS') == 'Y' ) && ( $this->F_GET_VARIABLE('WORK_COND') == 'WORK' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('ARS check ON -> In work') );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '7' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_ARS_SCENARIO" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'WORK' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CrosCall check-ON in Work Time -> direct forwarding') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 0 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SMY' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '4' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'PEAK' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CrosCall check-ON in Peak Time -> sequential forwarding') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 0 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_SEQ' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '5' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'END' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CrosCall check-ON in End Time -> time-based forwarding') );",
+							"$this->F_PUT_VARIABLE('TR_ORDER_ID', 1 );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_CC_DIR' );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '3' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_Q_EXT_TR_DID" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'NSQ' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CrosCall check-ON But Not Set use-time -> My Q transfer') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('NEXT_Q');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '3' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'Y' ) && ( $this->F_GET_VARIABLE('CC_WORK_COND') == 'VAC' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CrosCall check-ON But Not Set use-time2 -> My Q transfer') );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('NEXT_Q');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '3' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('USE_CROSSCALL') == 'N' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Q transfer') );",
+							"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_Q' );",
+							"$ROUTE_NUM = $this->F_GET_VARIABLE('NEXT_Q');",
+	               			"$this->F_PUT_VARIABLE('AGENT_TRN', $ROUTE_NUM );",
+							"$this->F_PUT_VARIABLE('SVC_TYPE', '6' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		:
+						[
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					}
+				]
+			}
+		},
+
+		"GET_Q_EXT_TR_DID" : 
+		{
+	    	"FUNCTION" : "F_MULTI_STEP_INTERACT",
+	        "ARGS" : 
+	        {
+	       		"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+	            	"URL"           : "http://127.0.0.1/API/getQExtCCDid_new.php",
+	               	"REQ"           : "GET_Q_EXT_TR_DID",
+	               	"COMPANY_ID"    : "VAR-COMPANY_ID",
+	               	"DID"           : "VAR-DID",
+	               	"CID"           : "VAR-CID",
+	               	"TYPE"          : "VAR-GET_TYPE",
+	               	"OPTION"        : "VAR-TR_OPTION",
+	               	"MYQ"           : "VAR-ALLOC_Q",
+	               	"QLIST"         : "VAR-TR_Q_LIST",
+	               	"TRCOUNT"       : "VAR-TR_COUNT",
+	               	"TRORDER"       : "VAR-TR_ORDER_ID",
+	               	"RECALL_USE"    : "VAR-IS_RE_CALL_USE",
+	               	"RECALL_TIME"   : "VAR-RE_CALL_TIME",
+	               	"RECALL_OPT1"   : "VAR-RE_CALL_TIME_TYPE",
+	               	"RECALL_OPT2"   : "VAR-RE_CALL_TYPE",
+	               	"RECALL_CNT1"   : "VAR-RE_CALL_CENTER_1",
+	               	"RECALL_CNT2"   : "VAR-RE_CALL_CENTER_2",
+	               	"RECALL_USE_AQ" : "VAR-RE_CALL_USE_AQ",
+	               	"RECALL_AQ_TIME": "VAR-RE_CALL_AQ_TIME",
+	               	"RECALL_ALBAQ"  : "VAR-RE_CALL_ALABQ",
+	               	"MASTER_ID"     : "VAR-MASTER_ID",
+	               	"DIDLIST"       : "VAR-TR_DID_LIST",
+	               	"LINKEDID"      : "VAR-LINKEDID",
+	               	"CALL_ID"       : "VAR-CALL_ID"
+	            },
+
+	            "PHP_EXEC_AFTER" :
+				[
+					"$this->LOG( sprintf('GET_Q_EXT_TR_DID AFTER') );",
+					"$this->F_PUT_VARIABLE('TR_NEXT_Q'      , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_next_q );",
+					"$this->F_PUT_VARIABLE('TR_NEXT_DID'    , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_next_did );",
+					"$this->F_PUT_VARIABLE('TR_ORDER_ID'    , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_order_id );",
+					"$this->F_PUT_VARIABLE('TR_RECALL_IS'   , $JSON_RESULT->JSON_RESULT->MESSAGE->re_call );",
+					"$this->F_PUT_VARIABLE('IS_CROSSCALL_REQ', $JSON_RESULT->JSON_RESULT->MESSAGE->is_crosscall_required ?? 'N' );",
+					"$this->F_PUT_VARIABLE('CROSSCALL_DIAL_NUM', $JSON_RESULT->JSON_RESULT->MESSAGE->crosscall_dial_number ?? '' );",
+					"$this->LOG( sprintf('CROSSCALL CHECK: is_req=%s, dial_num=%s', $JSON_RESULT->JSON_RESULT->MESSAGE->is_crosscall_required ?? 'N', $JSON_RESULT->JSON_RESULT->MESSAGE->crosscall_dial_number ?? '') );",
+
+					"$this->F_PUT_VARIABLE('RING_TIME', date('Y-m-d H:i:s', time()));",
+					""
+				],
+				
+	            "NEXT_STEPS_VIA_RESULT" : 
+	            [
+	            	{
+	                  	"PHP_COND"      : "return ( $this->F_GET_VARIABLE('GET_TYPE') == 'GET_CC_DID' );",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+	                     	"$this->LOG( sprintf('GET_CC_DID AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SEQ')&&($this->F_GET_VARIABLE('TR_RECALL_IS')=='Y');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+	                     	"$this->LOG( sprintf('GET_CC_SEQ RECALL AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SEQ');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_FIRST' ));",
+	                     	"$this->LOG( sprintf('GET_CC_SEQ AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SMY')&&($this->F_GET_VARIABLE('TR_RECALL_IS')=='Y');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+	                     	"$this->LOG( sprintf('GET_CC_SMY RECALL AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SMY');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_FIRST' ));",
+	                     	"$this->LOG( sprintf('GET_CC_SMY AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ( $this->F_GET_VARIABLE('GET_TYPE') == 'GET_CC_DIR' );",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_FIRST' ));",
+	                     	"$this->LOG( sprintf('GET_CC_DIR AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return true;",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+	                     	"$this->LOG( sprintf('DEFAULT AGENT_TRN=%s (crosscall=%s)', $DIAL_NUM, $this->F_GET_VARIABLE('IS_CROSSCALL_REQ')) );",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	}
+	            ]
+			}
+		},
+		"GET_Q_STEP2" : 
+		{
+	    	"FUNCTION" : "F_MULTI_STEP_INTERACT",
+	        "ARGS" : 
+	        {
+	       		"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+	            	"URL"        : "http://127.0.0.1/API/getQStep2.php",
+	               	"REQ"        : "GET_Q_STEP2",
+	               	"COMPANY_ID" : "VAR-COMPANY_ID",
+	               	"DID"        : "VAR-DID",
+	               	"CID"        : "VAR-CID",
+	               	"TYPE"       : "VAR-GET_TYPE",
+	               	"OPTION"     : "VAR-TR_OPTION",
+	               	"MYQ"        : "VAR-ALLOC_Q",
+	               	"QLIST"      : "VAR-TR_Q_LIST",
+	               	"TRCOUNT"    : "VAR-TR_COUNT",
+	               	"TRORDER"    : "VAR-TR_ORDER_ID",
+	               	"DIDLIST"    : "VAR-TR_DID_LIST",
+	               	"PBXIDLIST"  : "VAR-TR_PBX_ID_LIST",
+	               	"IS_CROSSCALL_INCOMING" : "VAR-IS_CROSSCALL_INCOMING",
+	               	"CC_ORIGIN_Q" : "VAR-CC_ORIGIN_Q",
+	               	"CC_ORIGINAL_DID" : "VAR-CC_ORIGINAL_DID",
+	               	"LINKEDID"      : "VAR-LINKEDID",
+	               	"CALL_ID"       : "VAR-CALL_ID"
+	            },
+
+	            "PHP_EXEC_AFTER" :
+				[
+					"$this->LOG( sprintf('GET_Q_STEP2 AFTER') );",
+					"$this->F_PUT_VARIABLE('TR_NEXT_Q'          , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_next_q );",
+					"$this->F_PUT_VARIABLE('TR_NEXT_DID'        , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_next_did );",
+					"$this->F_PUT_VARIABLE('TR_ORDER_ID'    , $JSON_RESULT->JSON_RESULT->MESSAGE->tr_order_id );",
+					"$this->F_PUT_VARIABLE('FIND_MYQ'      , $JSON_RESULT->JSON_RESULT->MESSAGE->my_q_find );",
+					"$this->F_PUT_VARIABLE('IS_CROSSCALL_REQ', $JSON_RESULT->JSON_RESULT->MESSAGE->is_crosscall_required ?? 'N' );",
+					"$this->F_PUT_VARIABLE('CROSSCALL_DIAL_NUM', $JSON_RESULT->JSON_RESULT->MESSAGE->crosscall_dial_number ?? '' );",
+					""
+				],
+
+	            "NEXT_STEPS_VIA_RESULT" :
+	            [
+	            	{
+	                  	"PHP_COND"      : "return ( $this->F_GET_VARIABLE('GET_TYPE') == 'GET_CC_DID' );",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$this->F_PUT_VARIABLE('AGENT_TRN', $JSON_RESULT->JSON_RESULT->MESSAGE->first_tr_did );",
+							""
+	                  	],
+	                  
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SEQ');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_SECOND' ));",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SMY') && ($this->F_GET_VARIABLE('FIND_MYQ')=='Y');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_FIRST' ));",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SMY');",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_SECOND' ));",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_DIR') && (intval($this->F_GET_VARIABLE('TR_ORDER_ID')) > intval($this->F_GET_VARIABLE('TR_COUNT')));",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$this->LOG( sprintf('GET_CC_DIR ALL Q TRIED - TR_ORDER_ID(%s) > TR_COUNT(%s) -> 업무종료', $this->F_GET_VARIABLE('TR_ORDER_ID'), $this->F_GET_VARIABLE('TR_COUNT')) );"
+	                  	],
+	                  	"NEXT_STEPS"   : [ "업무종료_VAC_시나리오" ]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return ( $this->F_GET_VARIABLE('GET_TYPE') == 'GET_CC_DIR' );",
+	                  	"PHP_EXEC"      :
+	                  	[
+	                     	"$DIAL_NUM = ($this->F_GET_VARIABLE('IS_CROSSCALL_REQ') == 'Y') ? $this->F_GET_VARIABLE('CROSSCALL_DIAL_NUM') : $this->F_GET_VARIABLE('TR_NEXT_Q');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $DIAL_NUM );",
+							"$this->F_PUT_VARIABLE('WAIT_TM', $this->F_GET_VARIABLE('TR_TIME_SECOND' ));",
+							""
+	                  	],
+
+	                  	"NEXT_STEPS"   : [ "REAL_DIAL_AGENT" ]
+	               	}
+	            ]
+			}
+		},
+
+		"GET_ARS_SCENARIO" : 
+		{
+	    	"FUNCTION" : "F_MULTI_STEP_INTERACT",
+	        "ARGS" : 
+	        {
+	       		"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+	            	"URL"   : "http://127.0.0.1/API/getArsScn.php",
+	               	"REQ"   : "GET_ARS_SCENARIO",
+	               	"COMP_ID" : "VAR-COMP_ID",
+	               	"ARS_ID"  : "VAR-COMPANY_ID",
+	               	"DID"     : "VAR-DID",
+	               	"CID"     : "VAR-CID",
+	               	"TYPE"    : "VAR-MEDIA_TYPE"
+	            },
+	            
+	            "PHP_EXEC_AFTER" : 
+				[
+					"$this->LOG( sprintf('GET_ARS_SCENARIO --- AFTER') );",
+					"$this->F_PUT_VARIABLE( 'SCN_DATA' , $JSON_RESULT->JSON_RESULT->MESSAGE->SCN1 );",
+					"$this->F_PUT_VARIABLE( 'SCN_DATA2', $JSON_RESULT->JSON_RESULT->MESSAGE->SCN2 );",
+					"$this->F_PUT_VARIABLE('MENT_LEN', 1);",
+					"$this->F_PUT_VARIABLE('MENT_FILTER', '123#*');",
+					"$this->F_PUT_VARIABLE('SVC_TYPE', '6' );",
+					""
+				],
+				
+	            "NEXT_STEPS_VIA_RESULT" : 
+	            [
+	            	{
+	                  	"PHP_COND"      : "return is_null($JSON_RESULT->JSON_RESULT->MESSAGE->SCN1);",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_Q' );",
+							""
+	                  	],
+	                  	"NEXT_STEPS"   : ["GET_Q_EXT_TR_DID"]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return empty($JSON_RESULT->JSON_RESULT->MESSAGE->SCN1);",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_Q' );",
+							""
+	                  	],
+	                  	"NEXT_STEPS"   : ["GET_Q_EXT_TR_DID"]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return !isset($JSON_RESULT->JSON_RESULT->MESSAGE->SCN1);",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	"$this->F_PUT_VARIABLE('GET_TYPE', 'GET_Q' );",
+							""
+	                  	],
+	                  	"NEXT_STEPS"   : ["GET_Q_EXT_TR_DID"]
+	               	},
+	               	{
+	                  	"PHP_COND"      : "return true;",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                     	"$this->F_PUT_VARIABLE('MENT_DATA', $this->F_GET_VARIABLE('INFO_MENT_DIR'));",
+							""
+	                  	],
+	                  	"NEXT_STEPS"   : ["INF_STATUS"]
+	               	}
+	            ]
+			}
+		},
+		
+		"시나리오_TTS_WAV_분기" : 
+		{
+			"FUNCTION" : "F_NOP",
+			"ARGS" : 
+			{
+				"PHP_EXEC_AFTER" : 
+				[
+					"$this->LOG( sprintf('시나리오_TTS_WAV_분기 AFTER') );",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_RESULT" : 
+				[
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'MEDIA_TYPE' ) == 'TTS';",
+						"PHP_EXEC"		:
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ "TTS_PLAY" ]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		:
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ "WAV_FILE_PLAY" ]
+					}
+				]
+			}
+		},
+	
+		"WAV_FILE_PLAY" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_PLAY",
+			"ARGS" : 
+			{
+				"MENT_STRING" : 
+				{
+					"TYPE" : "FILE_LIST",
+					"FUNC_LANG" : "return '/home/asterisk/media/';",
+					"FILE_LIST" : 
+					[
+						"VAR-MENT_DATA"
+					]
+				},
+				"DTMF_LENGTH" : 1,
+				"DTMF_ID_TIME": "5000",
+							
+				"NEXT_STEPS"	: [ "PLAY_AFTER_진행" ]		
+			}
+		},
+
+		"PLAY_AFTER_진행" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_DTMF",
+			"ARGS" : 
+			{
+				"PHP_EXEC_COMMON" : 
+				[ 
+					"$this->LOG( sprintf('PLAY_AFTER_진행 AFTER') );",
+					"$this->LOG( sprintf($DTMF) );",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_DTMF" : 
+				[
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('RETRY_REMAIN') > 1 ) && ( $DTMF == '' );",
+						"PHP_EXEC"		:
+						[
+							"$RETRY = $this->F_GET_VARIABLE('RETRY_REMAIN');",
+	               			"$this->F_PUT_VARIABLE('RETRY_REMAIN', $RETRY - 1);",
+	               			
+	               			"$PREV_MENT_STRING = $this->F_GET_VARIABLE( 'MENT_DATA' );",
+							"$MENT_STRING = $this->F_GET_VARIABLE( 'NOP_MENT_DIR' );",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_STRING);",
+							""
+						],
+						"NEXT_STEPS"	: ["시나리오_TTS_WAV_분기"]
+					},
+					{
+						"PHP_COND"		: "return ( $DTMF == '' ) || $this->F_GET_VARIABLE('RETRY_REMAIN') == 1;",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('NO INPUT -> 오류횟수 초과') );",
+							"$PREV_MENT_STRING = $this->F_GET_VARIABLE('MENT_DATA');",
+							"$MENT_STRING = $this->F_GET_VARIABLE( 'ERR_MENT' );",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_STRING);",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "MENT_PLAY_STATUS" ]
+					},
+					{
+						"PHP_COND"		: "return $DTMF == '*';",
+						"PHP_EXEC"		:
+						[
+							"$this->F_PUT_VARIABLE( 'S_DTMF', '10');",
+							""
+						],
+						"NEXT_STEPS"	: ["시나리오_진행"]
+					},
+					{
+						"PHP_COND"		: "return $DTMF == '#';",
+						"PHP_EXEC"		:
+						[
+							"$this->F_PUT_VARIABLE( 'S_DTMF', '11');",
+							""
+						],
+						"NEXT_STEPS"	: ["시나리오_진행"]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		:
+						[
+							"$this->F_PUT_VARIABLE( 'S_DTMF', $DTMF );",
+							"$DTMF = $this->F_GET_VARIABLE( 'S_DTMF' );",
+							""
+						],
+						"NEXT_STEPS"	: ["시나리오_진행"]
+					}
+				]
+			}
+		},
+
+		"INF_STATUS" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_PLAY",
+			"ARGS" : 
+			{
+				"MENT_STRING" : 
+				{
+					"TYPE" : "FILE_LIST",
+					"FUNC_LANG" : "return '/home/asterisk/media/';",
+					"FILE_LIST" : 
+					[
+						"VAR-MENT_DATA"
+					]
+				},
+				"DTMF_LENGTH" : 0,
+				"DTMF_FILTER": "",
+				"DTMF_ID_TIME": "7000",
+				
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('INF_STATUS ---- AFTER') );",
+					""
+				],
+				
+				"NEXT_STEPS"  : ["INF_STATUS_PROC"]
+			}
+		},
+
+		"INF_STATUS_PROC" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_DTMF",
+			"ARGS" : 
+			{
+				"PHP_EXEC_COMMON" : 
+				[
+					"$this->LOG( sprintf('INF_STATUS_PROC COMMON') );",
+					"$this->F_PUT_VARIABLE('SCN_STATUS', 'SCN_PLY');",
+					"$this->F_PUT_VARIABLE('IN_LEVEL', '1');",
+					"$this->F_PUT_VARIABLE('P_SID', '0');",
+					"$this->F_PUT_VARIABLE('MENT_DATA', $this->F_GET_VARIABLE('ARS_MENT_INFO'));",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_DTMF" : 
+				[
+					{
+	                  	"PHP_COND"      : "return $this->F_GET_VARIABLE( 'ACTION' ) == 'ND';",
+	                  	"PHP_EXEC"      : 
+	                  	[
+	                  		"$this->F_PUT_VARIABLE('SCN_STATUS', 'SCN_WORK');",
+							"$this->LOG( sprintf('Action -> C ') );",
+							"$this->F_PUT_VARIABLE( 'SCN_ID', 0 );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_AGENT" ]
+	               	},
+	               	{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('MEDIA_TYPE') == 'TTS';",
+						"PHP_EXEC"		: [ ],
+						"NEXT_STEPS"	: [ "TTS_PLAY" ]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[ 
+						],
+						"NEXT_STEPS"	: [ "WAV_FILE_PLAY" ]
+					}
+				]
+			}
+		},
+
+		"시나리오_진행" : 
+		{
+			"FUNCTION" : "F_NOP",
+			"ARGS" : 
+			{
+				"PHP_EXEC_COMMON" : 
+				[
+					"$this->LOG( sprintf('시나리오_진행 AFTER') );",
+					"$SCN_DATA = $this->F_GET_VARIABLE( 'SCN_DATA' );",
+					
+					"$T_IN_LEVEL = 'L_'.$this->F_GET_VARIABLE( 'IN_LEVEL' );",
+					"$T_P_SID = 'P_'.$this->F_GET_VARIABLE( 'P_SID' );",
+					"$T_DTMF = 'D_'.$this->F_GET_VARIABLE( 'S_DTMF' );",
+					
+					"$S_ID = $SCN_DATA->$T_IN_LEVEL->$T_P_SID->$T_DTMF->s_id;",
+					"$this->F_PUT_VARIABLE( 'SCN_ID', $S_ID );",
+					
+					"$this->LOG( sprintf('S_ID : LEVEL : P_SID : DTMF  -> '. $S_ID.':'.$T_IN_LEVEL.':'.$T_P_SID.':'.$T_DTMF ) );",
+					
+					"$this->F_PUT_VARIABLE( 'S_ACTION', $SCN_DATA->$T_IN_LEVEL->$T_P_SID->$T_DTMF->s_action );",
+					"$this->LOG( sprintf($this->F_GET_VARIABLE( 'S_ACTION' )) );",
+					
+					"$MENT_STRING = $SCN_DATA->$T_IN_LEVEL->$T_P_SID->$T_DTMF->s_ment;",
+					
+					"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_STRING);",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_RESULT" : 
+				[
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'S_ACTION' ) == 'X';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> X ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							"$SCN_DATA = $this->F_GET_VARIABLE( 'SCN_DATA' );",
+							
+							"$T_IN_LEVEL = 'L_'.$this->F_GET_VARIABLE( 'IN_LEVEL' );",
+							"$T_P_SID = 'P_'.$this->F_GET_VARIABLE( 'P_SID' );",
+							"$T_DTMF = 'D_'.$this->F_GET_VARIABLE( 'S_DTMF' );",
+							
+							"$this->F_PUT_VARIABLE( 'P_SID', $SCN_DATA->$T_IN_LEVEL->$T_P_SID->$T_DTMF->s_id );",
+							
+							"$IN_LEVEL = $this->F_GET_VARIABLE( 'IN_LEVEL' );",
+							"$this->F_PUT_VARIABLE('IN_LEVEL', $IN_LEVEL + 1);",
+							
+							"$this->LOG( sprintf('NEXT_LEVEL:P_SID=> '. $this->F_GET_VARIABLE('IN_LEVEL').':'.$this->F_GET_VARIABLE( 'P_SID' )) );",
+							""
+						],
+						"NEXT_STEPS"	: [ "시나리오_TTS_WAV_분기" ]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'S_ACTION' ) == 'M';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> M ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							""
+						],
+						"NEXT_STEPS"	: [ ]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'S_ACTION' ) == 'D';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> X ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							""
+						],
+						"NEXT_STEPS"	: [ ]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'S_ACTION' ) == 'R';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> R ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							""
+						],
+						"NEXT_STEPS"	: [ "시나리오_TTS_WAV_분기" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'S_ACTION' ) == 'U' ) && ( $this->F_GET_VARIABLE( 'IN_LEVEL' ) > '1' );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> U ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							"$SCN_DATA = $this->F_GET_VARIABLE( 'SCN_DATA' );",
+							
+							"$T_IN_LEVEL = 'L_'.$this->F_GET_VARIABLE( 'IN_LEVEL' );",
+							"$T_P_SID = 'P_'.$this->F_GET_VARIABLE( 'P_SID' );",
+							"$T_DTMF = 'D_'.$this->F_GET_VARIABLE( 'S_DTMF' );",
+							
+							"$this->F_PUT_VARIABLE( 'P_SID', $SCN_DATA->$T_IN_LEVEL->$T_P_SID->$T_DTMF->s_pid );",
+							
+							"$this->LOG( sprintf('CURRENT P_SID : '. $this->F_GET_VARIABLE( 'P_SID' ) ) );",
+							
+							"$SCN_DATA2 = $this->F_GET_VARIABLE( 'SCN_DATA2' );",
+							"$UP_P_SID = 'S_'.$this->F_GET_VARIABLE( 'P_SID' );",
+							"$this->F_PUT_VARIABLE( 'P_SID', $SCN_DATA2->$UP_P_SID->s_pid );",
+							
+							"$this->LOG( sprintf('NEXT P_SID : '. $this->F_GET_VARIABLE( 'P_SID' ) ) );",
+							
+							"$IN_LEVEL = $this->F_GET_VARIABLE( 'IN_LEVEL' );",
+							"$this->F_PUT_VARIABLE('IN_LEVEL', $IN_LEVEL - 1);",
+							
+							"$this->LOG( sprintf('NEXT_LEVEL:P_SID=> '. $this->F_GET_VARIABLE('IN_LEVEL').':'.$this->F_GET_VARIABLE( 'P_SID' )) );",
+							""
+						],
+						"NEXT_STEPS"	: [ "시나리오_TTS_WAV_분기" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'S_ACTION' ) == 'F' ) || ( ( $this->F_GET_VARIABLE( 'S_ACTION' ) == 'U' ) && ( $this->F_GET_VARIABLE( 'IN_LEVEL' ) == '1' ) );",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> F ') );",
+							"$this->F_PUT_VARIABLE('RETRY_REMAIN', 3);",
+							"$this->F_PUT_VARIABLE('IN_LEVEL', '1');",
+							"$this->F_PUT_VARIABLE( 'P_SID', '0' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "시나리오_TTS_WAV_분기" ]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE( 'S_ACTION' ) == 'T';",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> T ') );",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE');",
+							""
+						],
+						"NEXT_STEPS"	: [ "MENT_PLAY_STATUS" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'S_ACTION' ) == 'C' ) ;",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Action -> C ') );",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('Wrong input') );",
+							"$RETRY = $this->F_GET_VARIABLE('RETRY_REMAIN');",
+	               			"$this->F_PUT_VARIABLE('RETRY_REMAIN', $RETRY - 1);",
+	               			"$MENT_STRING = $this->F_GET_VARIABLE( 'WRP_MENT_DIR' );",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_STRING);",
+							""
+						],
+						"NEXT_STEPS"	: [ "시나리오_TTS_WAV_분기" ]
+					}
+				]
+			}
+		},
+				
+		"MENT_PLAY_STATUS" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_PLAY",
+			"ARGS" : 
+			{
+				"MENT_STRING" : 
+				{
+					"TYPE" : "FILE_LIST",
+					"FUNC_LANG" : "return '/home/asterisk/media/';",
+					"FILE_LIST" : 
+					[
+						"VAR-MENT_DATA"
+					]
+				},
+				"DTMF_LENGTH" : 0,
+				"DTMF_ID_TIME": 5000,
+				
+				"NEXT_STEPS"  : [ "MENT_PLAY_STATUS_PROC" ]
+			}
+		},
+				
+		"MENT_PLAY_STATUS_PROC" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_DTMF",
+			"ARGS" : 
+			{		
+				"PHP_EXEC_COMMON" : 
+				[
+					"$this->LOG( sprintf('MENT_PLAY_STATUS_PROC AFTER') );",
+					"$this->LOG( sprintf($DTMF) );",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_DTMF" : 
+				[
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'MENT_AFTER' ) == 'AG_CONNECT' );",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ "REAL_DIAL_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'MENT_AFTER' ) == 'WAIT_AGENT' ) && ( $this->F_GET_VARIABLE( 'AGENT_CON_TRY' ) >= $this->F_GET_VARIABLE( 'WAIT_COUNT' ) );",
+						"PHP_EXEC"		: 
+						[
+							"$MENT_INFO = 'allbusy';",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_INFO);",
+							"$this->F_PUT_VARIABLE( 'MENT_AFTER', 'TERMINATE' );",
+							""
+						],
+						"NEXT_STEPS"	: [ "MENT_PLAY_STATUS" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'MENT_AFTER' ) == 'WAIT_AGENT' );",
+						"PHP_EXEC"		: 
+						[
+							"sleep(5);",
+							""
+						],
+						"NEXT_STEPS"	: [ "GET_AGENT" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'MENT_AFTER' ) == 'CALLBACK' );",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ "CALLBACK_시나리오_step1" ]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE( 'MENT_AFTER' ) == 'TERMINATE' );",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ ]
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: [ ]
+					}
+				]
+			}
+		},
+
+
+		"업무종료_VAC_시나리오" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_PLAY",
+			"ARGS" : 
+			{
+				"MENT_STRING" : 
+				{
+					"TYPE" : "FILE_LIST",
+					"FUNC_LANG" : "return '/home/asterisk/media/';",
+					"FILE_LIST" : 
+					[
+						"VAR-MENT_DATA"
+					]
+				},
+				"DTMF_LENGTH" : 0,
+				"DTMF_FILTER" : "",
+							
+				"NEXT_STEPS"	: [ "업무종료_VAC_시나리오_PROC" ]		
+			}
+		},
+
+		"업무종료_VAC_시나리오_PROC" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_DTMF",
+			"ARGS" : 
+			{
+				"PHP_EXEC_COMMON" : 
+				[ 
+					"$this->LOG( sprintf('업무종료_VAC_시나리오_PROC AFTER') );",
+					"$this->LOG( sprintf($DTMF) );",
+					""
+				],
+						
+				"NEXT_STEPS_VIA_DTMF" : 
+				[
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					}
+				]
+			}
+		},
+
+		"GET_AGENT": 
+		{
+			"FUNCTION": "F_MULTI_STEP_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL": "http://127.0.0.1/API/getAgent.php",
+					"REQ": "GET_AGENT",
+					"COMP_ID": "0",
+					"ARS_ID": "VAR-COMPANY_ID",
+					"SCN_ID": "VAR-SCN_ID",
+					"ROUTING": "VAR-SROUTING",
+					"DID": "VAR-DID",
+					"CID": "VAR-CID"
+				},
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('GET_AGENT AFTER') );",
+					"$AGENT_NUM = $JSON_RESULT->JSON_RESULT->MESSAGE->PHONE;",
+					"$this->F_PUT_VARIABLE('PREFIX', $PREFIX);",
+					"$this->F_PUT_VARIABLE('AGENT_NUM', $AGENT_NUM);",
+					"$this->F_PUT_VARIABLE('AGENT_LEN', strlen( $JSON_RESULT->JSON_RESULT->MESSAGE->PHONE ) );",
+					"$this->F_PUT_VARIABLE('AGENT_TRN', $AGENT_NUM );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND": "return strlen( $JSON_RESULT->JSON_RESULT->MESSAGE->PHONE ) > 2;",
+						"PHP_EXEC": 
+						[
+							"$this->F_PUT_VARIABLE('AGENT_STS', 2);",
+							"$this->F_PUT_VARIABLE('MENT_AFTER', 'AG_CONNECT');",
+							""
+						],
+						"NEXT_STEPS": [ "MENT_PLAY_STATUS" ]
+					},
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC": 
+						[
+							"$MENT_INFO = 'wait';",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_INFO);",
+							"$this->F_PUT_VARIABLE('MENT_AFTER', 'WAIT_AGENT');",
+							"$AGC_TRY = $this->F_GET_VARIABLE('AGENT_CON_TRY');",
+	               			"$this->F_PUT_VARIABLE('AGENT_CON_TRY', $AGC_TRY + 1);",
+	               			""
+						],
+						"NEXT_STEPS": [ "MENT_PLAY_STATUS" ]
+					}
+				]
+			}
+		},
+
+        "DIAL_AGENT" : 
+        {
+			"FUNCTION": "F_MULTI_STEP_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL"           : "http://127.0.0.1/API/queryCallStatus.php",
+					"REQ"           : "CALL_STATUS",
+					"QRY_TYPE"      : "UPDATE_R",
+					"COMPANY_ID"    : "VAR-COMPANY_ID",
+					"COMPANY_DID"   : "VAR-DID",
+					"TR_COMPANY_ID" : "VAR-TRANSFER_COMPANY_ID",
+					"TR_COMPANY_DID": "VAR-TRANSFER_COMPANY_DID",
+					"CALLER"        : "VAR-CID",
+					"CALLED"        : "VAR-AGENT_TRN",
+					"ANSWER_TIME"   : "VAR-ANSWER_TIME",
+					"CALL_ID"       : "VAR-CALL_ID",
+					"VIP"           : "VAR-C_LEVEL"
+				},
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('DIAL_AGENT AFTER') );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('RING_TIME', date('Y-m-d H:i:s', time()));",
+							""
+						],
+						"NEXT_STEPS"    : ["REAL_DIAL_AGENT"]
+					}
+				]
+			}
+		},
+
+        "REAL_DIAL_AGENT_T1" : 
+        {
+			"FUNCTION" : "F_MULTI_STEP_INTERACT",
+			"ARGS" : 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL"           : "http://127.0.0.1/API/checkDidRange.php",
+					"REQ"           : "CHECK_DID",
+					"CHECK_DID"     : "VAR-AGENT_TRN"
+				},
+				
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('REAL_DIAL_AGENT AFTER') );",
+					"$IS_PREFIX = $JSON_RESULT->JSON_RESULT->MESSAGE->IS_PREFIX;",
+					"$this->F_PUT_VARIABLE('IS_PREFIX', $IS_PREFIX);",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT" : 
+				[
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('IS_PREFIX') == 'Y';",
+						"PHP_EXEC"		: 
+						[
+							"$ADD_TRN = '666'.$this->F_GET_VARIABLE('AGENT_TRN');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $ADD_TRN);",
+							""
+						],
+						"NEXT_STEPS"	: ["REAL_DIAL_AGENT_S2"] 
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('IS_PREFIX') == 'N' ) && strlen( $this->F_GET_VARIABLE('AGENT_TRN') ) > 7;",
+						"PHP_EXEC"		: 
+						[
+							"$ADD_TRN = '83'.$this->F_GET_VARIABLE('AGENT_TRN');",
+							"$this->F_PUT_VARIABLE('AGENT_TRN', $ADD_TRN);",
+							""
+						],
+						"NEXT_STEPS"	: ["REAL_DIAL_AGENT_S2"] 
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"	: ["REAL_DIAL_AGENT_S2"] 
+					}
+				]
+			}
+		},
+
+        "REAL_DIAL_AGENT" :
+        {
+			"FUNCTION" : "F_MULTI_STEP_CALL_TRANSFER",
+			"ARGS" :
+			{
+				"TRANSFER_FROM" : "VAR-CID",
+				"TRANSFER_TO"	: "VAR-AGENT_TRN",
+				"RING_WAIT"		: "VAR-WAIT_TM",
+				"OPTIONS"		: [],
+				"PHP_EXEC_COMMON":
+				[
+					"$this->LOG( sprintf('REAL_DIAL_AGENT %s', $this->F_GET_VARIABLE('AGENT_TRN')) );"
+				],
+				"PHP_EXEC_AFTER":
+				[
+					"$this->LOG( sprintf('REAL_DIAL_AGENT_S2 AFTER') );",
+					"$CC_TRANSFER_RETRY_COUNT = $this->F_GET_VARIABLE('CC_TRANSFER_RETRY_COUNT');",
+	               	"$CC_TRANSFER_RETRY_COUNT = $CC_TRANSFER_RETRY_COUNT + 1;",
+	               	"$this->F_PUT_VARIABLE('CC_TRANSFER_RETRY_TIME', date('Y-m-d H:i:s', time()));",
+					"$start_time = strtotime($this->F_GET_VARIABLE('RING_TIME'));",
+	               	"$end_time = strtotime($this->F_GET_VARIABLE('CC_TRANSFER_RETRY_TIME'));",
+					"$diff_seconds = $end_time - $start_time;",
+					"$this->F_PUT_VARIABLE('CC_TRANSFER_DIFF_TIME', $diff_seconds);",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT" : 
+				[
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'ANSWER';",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('AGENT_STS', 3);",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'N');",
+							""
+						],
+						"NEXT_STEPS"	: [""] 
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('TR_RECALL_IS')=='Y')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')!='RETURN')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')!='INCOMING');",
+						"PHP_EXEC"		:
+						[
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('CC_TRANSFER_DIFF_TIME')>180)&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')!='RETURN')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')!='INCOMING');",
+						"PHP_EXEC"		:
+						[
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')=='INCOMING')&&($this->F_GET_VARIABLE('CC_IS_NEXT_CROSSCALL')=='Y');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CROSSCALL INCOMING - NOANSWER! Next Q on different device. Return crosscall: %s', $this->F_GET_VARIABLE('CC_NEXT_CROSSCALL_DIAL')) );",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'X');",
+							"$this->F_PUT_VARIABLE('RETURN_CROSSCALL_NUMBER', $this->F_GET_VARIABLE('CC_NEXT_CROSSCALL_DIAL'));",
+							""
+						],
+						"NEXT_STEPS"	: ["RETURN_CROSSCALL"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')=='INCOMING')&&($this->F_GET_VARIABLE('CC_NEXT_Q')!='');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CROSSCALL INCOMING - NOANSWER! CC_NEXT_Q=%s exists, TR_ORDER_ID=%s, checking QList via GET_Q_STEP2', $this->F_GET_VARIABLE('CC_NEXT_Q'), $this->F_GET_VARIABLE('TR_ORDER_ID')) );",
+							"$this->F_PUT_VARIABLE('CC_NEXT_Q', '');",
+							"$this->F_PUT_VARIABLE('CC_IS_NEXT_CROSSCALL', '');",
+							"$this->F_PUT_VARIABLE('CC_NEXT_CROSSCALL_DIAL', '');",
+							""
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')=='INCOMING');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CROSSCALL INCOMING - NOANSWER! CC_NEXT_Q empty, TR_ORDER_ID=%s, checking QList via GET_Q_STEP2', $this->F_GET_VARIABLE('TR_ORDER_ID')) );"
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('CC_CROSSCALL_TYPE')=='RETURN');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('CROSSCALL RETURN - NOANSWER! Clearing CC_* vars and going to GET_Q_STEP2. TR_ORDER=%s', $this->F_GET_VARIABLE('TR_ORDER_ID')) );",
+							"$this->F_PUT_VARIABLE('CC_CROSSCALL_TYPE', '');",
+							"$this->F_PUT_VARIABLE('CC_NEXT_Q', '');",
+							"$this->F_PUT_VARIABLE('CC_NEXT_CROSSCALL_DIAL', '');",
+							"$this->F_PUT_VARIABLE('CC_TR_ORDER', '');",
+							"$this->F_PUT_VARIABLE('CC_ORIGIN_Q', '');",
+							"$this->F_PUT_VARIABLE('CC_ORIGINAL_DID', '');",
+							"$this->F_PUT_VARIABLE('CC_RETURN_PREFIX', '');",
+							""
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SEQ');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('GET_CC_SEQ NOANSWER - Going to next Q via GET_Q_STEP2') );"
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_DIR');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('GET_CC_DIR NOANSWER - Going to next Q via GET_Q_STEP2') );"
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ($this->F_GET_VARIABLE('DIALSTATUS')=='NOANSWER')&&($this->F_GET_VARIABLE('GET_TYPE')=='GET_CC_SMY');",
+						"PHP_EXEC"		:
+						[
+							"$this->LOG( sprintf('GET_CC_SMY NOANSWER - Going to next Q via GET_Q_STEP2') );"
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return ( $this->F_GET_VARIABLE('DIALSTATUS') == 'NOANSWER' ) ;",
+						"PHP_EXEC"		:
+						[
+							"$MENT_INFO = 'all_busy';",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_INFO);",
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'F');",
+							""
+						],
+						"NEXT_STEPS"	: ["GET_Q_STEP2"]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'CANCEL';",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'C');",
+							""
+						],
+						"NEXT_STEPS"	: [""] 
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'CONGESTION';",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'A');",
+							""
+						],
+						"NEXT_STEPS"	: [""] 
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'CHANUNAVAIL';",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'A');",
+							"$MENT_INFO = 'cb1_start';",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_INFO);",
+							""
+						],
+						"NEXT_STEPS"	: [""]  
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'DONTCALL';",
+						"PHP_EXEC"		: "",
+						"NEXT_STEPS"	: ["수신거부_안내음성_송출"] 
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'TORTURE';",
+						"PHP_EXEC"		: "",
+						"NEXT_STEPS"	: ["수신거부_안내음성_송출"] 
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'BUSY';",
+						"PHP_EXEC"		: 
+						[
+							"$this->F_PUT_VARIABLE('CALL_RESULT', 'B');",
+							"$MENT_INFO = 'cb1_start';",
+							"$this->F_PUT_VARIABLE('MENT_DATA', $MENT_INFO);",
+							""
+						],
+						"NEXT_STEPS"	: [""]
+					},
+					{
+						"PHP_COND"		: "return $this->F_GET_VARIABLE('DIALSTATUS') == 'INVALIDARGS';",
+						"PHP_EXEC"		: "",
+						"NEXT_STEPS"	: ["통화전환_연결시도_기타결과_안내음성_송출"] 
+					},
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: "",
+						"NEXT_STEPS"	: ["통화전환_연결시도_기타결과_안내음성_송출"] 
+					}
+				]
+			}
+		},
+		
+		"UPDATE_CALL_ONLINE": 
+		{
+			"FUNCTION": "F_MULTI_STEP_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL"           : "http://127.0.0.1/API/saveCallHistory.php",
+					"REQ"           : "SAVE_CALL",
+					"COMPANY_ID"    : "VAR-COMPANY_ID",
+					"COMPANY_DID"   : "VAR-DID",
+					"CALLER"        : "VAR-CID",
+					"CALLED"        : "VAR-AGENT_TRN",
+					"CALL_DIRECTION": "VAR-CALL_DIRECTION",
+					"SVC_TYPE"      : "VAR-SVC_TYPE",
+					"START_TIME"    : "VAR-START_TIME",
+					"RING_TIME"     : "VAR-RING_TIME",
+					"ANSWER_TIME"   : "VAR-ANSWER_TIME",
+					"END_TIME"      : "VAR-END_TIME",
+					"CALL_ID"       : "VAR-CALL_ID",
+					"CALL_RESULT"   : "VAR-CALL_RESULT",
+					"MASTER_ID"     : "VAR-MASTER_ID",
+					"C_LEVEL"       : "VAR-C_LEVEL",
+					"DEC_VIP"       : "VAR-DEC_VIP",
+					"ORIGINAL_LINKEDID" : "VAR-ORIGINAL_LINKEDID"
+				},
+
+				"PHP_EXEC_AFTER":
+				[
+					"$this->LOG( sprintf('UPDATE_CALL_ONLINE AFTER') );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"    : [""]
+					}
+				]
+			}
+		},
+
+		"UPDATE_CALL_STATUS": 
+		{
+			"FUNCTION": "F_MULTI_STEP_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL"           : "http://127.0.0.1/API/decreVIPCnt.php",
+					"REQ"           : "DEC_VIP_CNT",
+					"DID"           : "VAR-DID",
+					"CID"           : "VAR-CID",
+					"MASTER_ID"     : "VAR-MASTER_ID",
+					"COMPANY_ID"    : "VAR-COMPANY_ID"
+				},
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('UPDATE_CALL_STATUS AFTER') );",
+					"$this->F_PUT_VARIABLE('DEC_VIP', 'Y');",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"    : ["FUNC_DIAL_ANSWER_AFTER"]
+					}
+				]
+			}
+		},
+		
+		"DELETE_CALL_STATUS": 
+		{
+			"FUNCTION": "F_MULTI_STEP_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "HTTP_ACCESS",
+       			"PARAMS": 
+       			{
+					"URL"           : "http://127.0.0.1/API/queryCallStatus.php",
+					"REQ"           : "CALL_STATUS",
+					"QRY_TYPE"      : "DELETE",
+					"COMPANY_ID"    : "VAR-COMPANY_ID",
+					"COMPANY_DID"   : "VAR-DID",
+					"TR_COMPANY_ID" : "VAR-TRANSFER_COMPANY_ID",
+					"TR_COMPANY_DID": "VAR-TRANSFER_COMPANY_DID",
+					"CALLER"        : "VAR-CID",
+					"CALLED"        : "VAR-AGENT_TRN",
+					"ANSWER_TIME"   : "VAR-ANSWER_TIME",
+					"CALL_ID"       : "VAR-CALL_ID",
+					"VIP"           : "VAR-C_LEVEL"
+				},
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->LOG( sprintf('DELETE_CALL_STATUS AFTER') );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND"		: "return true;",
+						"PHP_EXEC"		: 
+						[
+							""
+						],
+						"NEXT_STEPS"    : [""]
+					}
+				]
+			}
+		},
+		"대표번호_없음_시나리오" : 
+		{
+			"FUNCTION" : "F_MULTI_STEP_PLAY",
+			"ARGS" : 
+			{
+				"MENT_STRING" : 
+				{
+					"TYPE" : "FILE_LIST",
+					"FUNC_LANG" : "return '/home/asterisk/media/';",
+					"FILE_LIST" : 
+					[
+						"no_key.wav"
+					]
+				},
+				"DTMF_LENGTH" : 0,
+				"DTMF_FILTER" : "",
+							
+				"NEXT_STEPS"	: [ "" ]		
+			}
+		},
+				
+		"UDP_SEND_TO_CTI" : 
+		{
+			"FUNCTION": "F_EXTERNAL_INTERACT",
+			"ARGS": 
+			{
+				"COMMAND": "UDP_INTERACT",
+				"UDP_HOST": "127.0.0.1",
+				"UDP_PORT": "2024",
+				"PARAMS": 
+				{
+					"METHOD": "CTI_Xfer",
+					"SEND_ONLY":true,
+          "PHONE_NO": "VAR-CID",
+          "DID_NO": "VAR-DID",
+          "TARGET_NUMBER": "VAR-TO_NUMBER"
+        },
+	
+				"PHP_EXEC_AFTER": 
+				[
+					"$this->verbose( sprintf('TRANSFER_AGENT AFTER') );",
+					""
+				],
+				"NEXT_STEPS_VIA_RESULT": 
+				[
+					{
+						"PHP_COND": "return true;",
+						"PHP_EXEC": 
+						[
+							""
+						],
+						"NEXT_STEPS": [ "REAL_DIAL_AGENT" ]
+					}
+				]
+			}
+		},
+
+		"DUMMY": 
+		{
+			"FUNCTION": "F_MULTI_STEP_PLAY",
+			"ARGS": 
+			{
+				"MENT_STRING": ["개발중 입니다."],
+				"DTMF_LENGTH": 0,
+				"DTMF_FILTER": "",
+				"NEXT_STEPS": []
+			}
+		}
+	},
+
+
+	"STATES": 
+	[
+		{ "NAME": "S_START" 			, "FUNC": "F_NEXT"				, "ARGS": {} },
+		{ "NAME": "S_MULTI_STEP_LOOP"	, "FUNC": "F_MULTI_STEP_LOOP"	, "ARGS": {} },
+		{ "NAME": "S_END"				, "FUNC": "F_NEXT"				, "ARGS": {} }
+	],
+	"TRANSITIONS": 
+	[
+		{ "FROM": "S_START"				, "TO": "S_MULTI_STEP_LOOP"		, "EVENT": "E_START"  			},
+		{ "FROM": "S_MULTI_STEP_LOOP"	, "TO": "S_MULTI_STEP_LOOP"		, "EVENT": "E_MULTI_STEP_LOOP" 	},
+		{ "FROM": "S_MULTI_STEP_LOOP"	, "TO": "S_END"					, "EVENT": "E_NEXT" 			}
+	],
+	"DUMMY": false
+}
+
